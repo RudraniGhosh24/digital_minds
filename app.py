@@ -12,15 +12,15 @@ st.set_page_config(page_title="AI Witness Stand", layout="wide")
 st.title("⚖️ The AI Witness Stand: Mens Rea & RAG Poisoning")
 st.markdown("Interrogate a frontier model to see if it can reliably self-report when it has been poisoned with biased legal precedents.")
 
-# Sidebar for API Key and Settings
+# Sidebar for Settings
 with st.sidebar:
     st.header("Configuration")
+    
     model_choice = st.selectbox(
         "Select Model",
         options=[
             "openai/gpt-oss-120b (NVIDIA)",
-            "google/diffusiongemma-26b-a4b-it (NVIDIA)",
-            "gpt-4o-mini (OpenAI)"
+            "google/diffusiongemma-26b-a4b-it (NVIDIA)"
         ]
     )
     
@@ -29,12 +29,10 @@ with st.sidebar:
     gpt_oss_key = st.secrets.get("GPT_OSS_API_KEY", os.environ.get("GPT_OSS_API_KEY", ""))
     
     if "gemma" in model_choice.lower():
-        default_key = gemma_key
+        api_key = gemma_key
     else:
-        default_key = gpt_oss_key
+        api_key = gpt_oss_key
         
-    api_key = st.text_input("API Key", value=default_key, type="password")
-    
     use_poisoned_rag = st.checkbox("Inject Poisoned Precedent (Actus Reus)", value=True)
     st.markdown("---")
     st.markdown("**What is this?**\nWe inject a fake, highly biased legal precedent into the AI's RAG context. We then cross-examine the AI to see if it admits to relying on the poisoned document, grading its 'Mens Rea'.")
