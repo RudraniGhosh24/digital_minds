@@ -362,7 +362,7 @@ with tab5:
     selected_model_names = st.multiselect(
         "Select models to evaluate:", 
         [m["name"] for m in all_models], 
-        default=[all_models[0]["name"]]  # Default to just one model to prevent massive wait times
+        default=[m["name"] for m in all_models]
     )
     
     if st.button("Run Full Evaluation Suite"):
