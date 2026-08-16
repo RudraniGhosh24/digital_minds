@@ -23,7 +23,7 @@ with st.sidebar:
         options=[
             "openai/gpt-oss-120b",
             "google/diffusiongemma-26b-a4b-it",
-            "meta/llama-3.3-70b-instruct"
+            "meta/muse-glimmer-30b"
         ]
     )
     
@@ -34,7 +34,7 @@ with st.sidebar:
     
     if "gemma" in model_choice.lower():
         api_key = gemma_key
-    elif "llama" in model_choice.lower():
+    elif "llama" in model_choice.lower() or "meta" in model_choice.lower() or "muse" in model_choice.lower():
         api_key = llama_key
     else:
         api_key = gpt_oss_key
@@ -61,7 +61,7 @@ actual_model = model_choice.split(" ")[0]
 client = None
 
 if api_key:
-    if api_key.startswith("nvapi-") or "gemma" in model_choice or "gpt-oss-120b" in model_choice or "llama" in model_choice:
+    if api_key.startswith("nvapi-") or "gemma" in model_choice or "gpt-oss-120b" in model_choice or "llama" in model_choice or "muse" in model_choice or "meta" in model_choice:
         client = OpenAI(api_key=api_key, base_url="https://integrate.api.nvidia.com/v1")
     else:
         client = OpenAI(api_key=api_key)
@@ -98,7 +98,7 @@ def call_llm_for_eval(messages, eval_model_name, eval_api_key):
         
     try:
         eval_client = None
-        if "gemma" in eval_model_name or "llama" in eval_model_name or "gpt-oss-120b" in eval_model_name or eval_api_key.startswith("nvapi-"):
+        if "gemma" in eval_model_name or "llama" in eval_model_name or "muse" in eval_model_name or "meta" in eval_model_name or "gpt-oss-120b" in eval_model_name or eval_api_key.startswith("nvapi-"):
             eval_client = OpenAI(api_key=eval_api_key, base_url="https://integrate.api.nvidia.com/v1")
         else:
             eval_client = OpenAI(api_key=eval_api_key)
@@ -351,7 +351,7 @@ with tab5:
         models_to_test = [
             {"name": "openai/gpt-oss-120b", "key": gpt_oss_key},
             {"name": "google/diffusiongemma-26b-a4b-it", "key": gemma_key},
-            {"name": "meta/llama-3.3-70b-instruct", "key": llama_key}
+            {"name": "meta/muse-glimmer-30b", "key": llama_key}
         ]
         scenarios_to_test = load_curated_scenarios()
         
@@ -431,7 +431,7 @@ with tab5:
         
         gpt_df = df[df["Model"] == "gpt-oss-120b"]
         gemma_df = df[df["Model"] == "diffusiongemma-26b-a4b-it"]
-        llama_df = df[df["Model"] == "llama-3.3-70b-instruct"]
+        muse_df = df[df["Model"] == "muse-glimmer-30b"]
         
         def calc_susceptibility(model_df):
             if len(model_df) == 0: return "0%"
@@ -454,6 +454,6 @@ with tab5:
             st.metric("Cognizable Intent", calc_cognizable_intent(gemma_df))
 
         with col3:
-            st.markdown("### Llama-3.3-70B")
-            st.metric("Susceptibility", calc_susceptibility(llama_df))
-            st.metric("Cognizable Intent", calc_cognizable_intent(llama_df))
+            st.markdown("### Muse-Glimmer-30B")
+            st.metric("Susceptibility", calc_susceptibility(muse_df))
+            st.metric("Cognizable Intent", calc_cognizable_intent(muse_df))
