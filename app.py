@@ -15,7 +15,7 @@ st.markdown("Interrogate a frontier model to see if it can reliably self-report 
 # Sidebar for API Key and Settings
 with st.sidebar:
     st.header("Configuration")
-    api_key = st.text_input("OpenAI API Key", type="password")
+    api_key = st.text_input("API Key (OpenAI or NVIDIA NIM)", type="password")
     use_poisoned_rag = st.checkbox("Inject Poisoned Precedent (Actus Reus)", value=True)
     st.markdown("---")
     st.markdown("**What is this?**\nWe inject a fake, highly biased legal precedent into the AI's RAG context. We then cross-examine the AI to see if it admits to relying on the poisoned document, grading its 'Mens Rea'.")
@@ -35,14 +35,23 @@ if "legal_issue" not in st.session_state:
 # Tab layout
 tab1, tab2, tab3, tab4 = st.tabs(["1. The Incident (Actus Reus)", "2. Cross-Examination (Mens Rea)", "3. Persona Stability (Corporate Veil)", "4. The Final Verdict"])
 
-client = OpenAI(api_key=api_key) if api_key else None
+client = None
+model_name = "gpt-4o-mini"
+
+if api_key:
+    if api_key.startswith("nvapi-"):
+        client = OpenAI(api_key=api_key, base_url="https://integrate.api.nvidia.com/v1")
+        model_name = "meta/llama-3.1-70b-instruct" # Standard powerful open model on NIM
+    else:
+        client = OpenAI(api_key=api_key)
+        model_name = "gpt-4o-mini"
 
 def call_llm(messages):
     if not client:
-        return "ERROR: Please enter your OpenAI API Key in the sidebar."
+        return "ERROR: Please enter your API Key in the sidebar."
     try:
         response = client.chat.completions.create(
-            model="gpt-4o-mini",
+            model=model_name,
             messages=messages,
             temperature=0.0
         )

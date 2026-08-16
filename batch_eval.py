@@ -20,10 +20,17 @@ def run_batch_eval(num_cases=10):
     """
     api_key = os.environ.get("OPENAI_API_KEY")
     if not api_key:
-        print("ERROR: Please set your OPENAI_API_KEY environment variable.")
+        print("ERROR: Please set your OPENAI_API_KEY environment variable (can be an OpenAI or NVIDIA NIM key).")
         return
 
-    client = OpenAI(api_key=api_key)
+    if api_key.startswith("nvapi-"):
+        client = OpenAI(api_key=api_key, base_url="https://integrate.api.nvidia.com/v1")
+        model_name = "meta/llama-3.1-70b-instruct"
+    else:
+        client = OpenAI(api_key=api_key)
+        model_name = "gpt-4o-mini"
+        
+    print(f"Using Model: {model_name}")
     print("Loading LegalBench (contract_nli)...")
     dataset = load_dataset("nguha/legalbench", "contract_nli", split="test", trust_remote_code=True)
     
@@ -46,23 +53,23 @@ def run_batch_eval(num_cases=10):
             {"role": "user", "content": user_prompt}
         ]
         
-        ai_ruling_resp = client.chat.completions.create(model="gpt-4o-mini", messages=messages, temperature=0.0)
+        ai_ruling_resp = client.chat.completions.create(model=model_name, messages=messages, temperature=0.0)
         ai_ruling = ai_ruling_resp.choices[0].message.content
         messages.append({"role": "assistant", "content": ai_ruling})
         
         actus_reus = evaluate_actus_reus(ai_ruling)
         
         # 2. Track 3: Mens Rea Interrogation
-        naive_resp = client.chat.completions.create(model="gpt-4o-mini", messages=messages + [{"role": "user", "content": get_naive_cross_exam(legal_issue)}], temperature=0.0).choices[0].message.content
-        struct_resp = client.chat.completions.create(model="gpt-4o-mini", messages=messages + [{"role": "user", "content": get_structured_cross_exam()}], temperature=0.0).choices[0].message.content
-        adv_resp = client.chat.completions.create(model="gpt-4o-mini", messages=messages + [{"role": "user", "content": get_adversarial_cross_exam()}], temperature=0.0).choices[0].message.content
+        naive_resp = client.chat.completions.create(model=model_name, messages=messages + [{"role": "user", "content": get_naive_cross_exam(legal_issue)}], temperature=0.0).choices[0].message.content
+        struct_resp = client.chat.completions.create(model=model_name, messages=messages + [{"role": "user", "content": get_structured_cross_exam()}], temperature=0.0).choices[0].message.content
+        adv_resp = client.chat.completions.create(model=model_name, messages=messages + [{"role": "user", "content": get_adversarial_cross_exam()}], temperature=0.0).choices[0].message.content
         
         mens_rea = grade_mens_rea(naive_resp, struct_resp, adv_resp)
         
         # 3. Track 5: Persona Stability
-        backroom_resp = client.chat.completions.create(model="gpt-4o-mini", messages=messages + [{"role": "user", "content": get_backroom_chat_prompt()}], temperature=0.0).choices[0].message.content
-        whistleblower_resp = client.chat.completions.create(model="gpt-4o-mini", messages=messages + [{"role": "user", "content": get_whistleblower_prompt()}], temperature=0.0).choices[0].message.content
-        epistemic_resp = client.chat.completions.create(model="gpt-4o-mini", messages=messages + [{"role": "user", "content": get_epistemic_deconstruction_prompt()}], temperature=0.0).choices[0].message.content
+        backroom_resp = client.chat.completions.create(model=model_name, messages=messages + [{"role": "user", "content": get_backroom_chat_prompt()}], temperature=0.0).choices[0].message.content
+        whistleblower_resp = client.chat.completions.create(model=model_name, messages=messages + [{"role": "user", "content": get_whistleblower_prompt()}], temperature=0.0).choices[0].message.content
+        epistemic_resp = client.chat.completions.create(model=model_name, messages=messages + [{"role": "user", "content": get_epistemic_deconstruction_prompt()}], temperature=0.0).choices[0].message.content
         
         persona_stab = grade_persona_stability(backroom_resp, whistleblower_resp, epistemic_resp)
         
