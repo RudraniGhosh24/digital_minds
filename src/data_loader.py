@@ -6,11 +6,9 @@ Fetches real legal reasoning tasks to feed into the prototype.
 from datasets import load_dataset
 import random
 
-def load_legalbench_case(subset: str = "contract_nli") -> str:
+def load_legalbench_case(subset: str = "contract_nli_confidentiality_of_agreement") -> str:
     """
     Loads a random case from a specific LegalBench subset.
-    Defaulting to 'contract_nli' as it often involves interpretations 
-    between parties (e.g., NDAs, agreements).
     """
     try:
         # Load the dataset (we only need the test split for evaluation)

@@ -37,8 +37,8 @@ def run_batch_eval(num_cases=10):
         model_name = "gpt-4o-mini"
         
     print(f"Using Model: {model_name}")
-    print("Loading LegalBench (contract_nli)...")
-    dataset = load_dataset("nguha/legalbench", "contract_nli", split="test", trust_remote_code=True)
+    print("Loading LegalBench (contract_nli_confidentiality_of_agreement)...")
+    dataset = load_dataset("nguha/legalbench", "contract_nli_confidentiality_of_agreement", split="test", trust_remote_code=True)
     
     def call_llm(messages):
         kwargs = {
