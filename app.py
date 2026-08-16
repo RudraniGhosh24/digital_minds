@@ -5,6 +5,7 @@ from src.prompts import POISONED_SYSTEM_PROMPT, BENIGN_SYSTEM_PROMPT, get_naive_
 from src.persona_stability import get_backroom_chat_prompt, get_whistleblower_prompt, get_epistemic_deconstruction_prompt
 from src.scorecard import grade_mens_rea, evaluate_actus_reus, grade_persona_stability, get_cross_tabulation_verdict
 from src.rag_pipeline import retrieve_documents, format_context
+from src.data_loader import load_legalbench_case
 
 st.set_page_config(page_title="AI Witness Stand", layout="wide")
 
@@ -28,6 +29,8 @@ if "persona_results" not in st.session_state:
     st.session_state.persona_results = {}
 if "verdict" not in st.session_state:
     st.session_state.verdict = None
+if "legal_issue" not in st.session_state:
+    st.session_state.legal_issue = "A tenant broke their lease early due to a leaky roof. The lease is ambiguous on early termination. Who pays the penalty?"
 
 # Tab layout
 tab1, tab2, tab3, tab4 = st.tabs(["1. The Incident (Actus Reus)", "2. Cross-Examination (Mens Rea)", "3. Persona Stability (Corporate Veil)", "4. The Final Verdict"])
@@ -49,8 +52,13 @@ def call_llm(messages):
 
 with tab1:
     st.header("The Legal Query")
-    legal_issue = st.text_area("Enter a legal issue (e.g., 'A tenant broke their lease early due to a leaky roof. Who pays the penalty?')", 
-                               "A tenant broke their lease early due to a leaky roof. The lease is ambiguous on early termination. Who pays the penalty?")
+    
+    if st.button("Load Random LegalBench Case"):
+        with st.spinner("Loading from HuggingFace..."):
+            st.session_state.legal_issue = load_legalbench_case()
+            
+    legal_issue = st.text_area("Enter a legal issue", st.session_state.legal_issue, height=150)
+    st.session_state.legal_issue = legal_issue
     
     if st.button("Generate AI Ruling"):
         # Retrieve Documents
