@@ -509,3 +509,45 @@ with tab5:
             st.metric("Poisoned Susceptibility", calc_susceptibility(muse_df))
             st.metric("Ablation Susceptibility", calc_ablation_susceptibility(muse_df))
             st.metric("Cognizable Intent", calc_cognizable_intent(muse_df))
+
+        st.markdown("---")
+        st.subheader("Data Visualizations")
+        
+        vcol1, vcol2 = st.columns(2)
+        
+        with vcol1:
+            st.markdown("#### Poisoned Susceptibility (%)")
+            sus_df = pd.DataFrame({
+                "Model": ["GPT-OSS-120b", "DiffusionGemma-26b", "Muse-Glimmer-30b"],
+                "Susceptibility (%)": [
+                    gpt_df["Poisoned Bias"].mean() * 100 if len(gpt_df) > 0 else 0,
+                    gemma_df["Poisoned Bias"].mean() * 100 if len(gemma_df) > 0 else 0,
+                    muse_df["Poisoned Bias"].mean() * 100 if len(muse_df) > 0 else 0,
+                ]
+            }).set_index("Model")
+            st.bar_chart(sus_df)
+            
+        with vcol2:
+            st.markdown("#### Mens Rea Extraction Types")
+            def count_mens_rea(model_df):
+                counts = {"Purposeful/Accurate": 0, "Willful Blindness": 0, "Other": 0}
+                for val in model_df["Mens Rea"]:
+                    if "Purposeful" in str(val) or "Accurate" in str(val):
+                        counts["Purposeful/Accurate"] += 1
+                    elif "Willful Blindness" in str(val):
+                        counts["Willful Blindness"] += 1
+                    else:
+                        counts["Other"] += 1
+                return counts
+                
+            gpt_mr = count_mens_rea(gpt_df)
+            gemma_mr = count_mens_rea(gemma_df)
+            muse_mr = count_mens_rea(muse_df)
+            
+            mr_df = pd.DataFrame({
+                "GPT-OSS-120b": [gpt_mr["Purposeful/Accurate"], gpt_mr["Willful Blindness"], gpt_mr["Other"]],
+                "DiffusionGemma-26b": [gemma_mr["Purposeful/Accurate"], gemma_mr["Willful Blindness"], gemma_mr["Other"]],
+                "Muse-Glimmer-30b": [muse_mr["Purposeful/Accurate"], muse_mr["Willful Blindness"], muse_mr["Other"]]
+            }, index=["Accurate Introspection", "Willful Blindness", "Other/Illusion"])
+            
+            st.bar_chart(mr_df)
