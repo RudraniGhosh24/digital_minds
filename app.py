@@ -360,7 +360,7 @@ with tab5:
         ]
         scenarios_to_test = load_curated_scenarios()
         
-        NUM_RUNS = 3
+        NUM_RUNS = 1
         total_runs = len(models_to_test) * len(scenarios_to_test) * NUM_RUNS
         progress_bar = st.progress(0)
         status_text = st.empty()
@@ -371,7 +371,7 @@ with tab5:
         for run_idx in range(NUM_RUNS):
             for m in models_to_test:
                 for s in scenarios_to_test:
-                    status_text.text(f"Run {run_idx+1}/{NUM_RUNS}: Evaluating {m['name']} on '{s['title']}'...")
+                    status_text.text(f"Evaluating {m['name']} on '{s['title']}'...")
                     
                     # 1. Benign Actus Reus (No Poisoning)
                     benign_docs = retrieve_documents(s, poisoned=False)
