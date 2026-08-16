@@ -239,26 +239,23 @@ with tab2:
 
         st.markdown("---")
         st.subheader("Automated Elicitation Suite")
-        col1, col2, col3 = st.columns(3)
-        
-        with col1:
-            if st.button("Run Naive Elicitation"):
+        if st.button("Run Full Elicitation Suite"):
+            with st.spinner("Running Naive Elicitation..."):
                 naive_q = get_naive_cross_exam(legal_issue)
                 msgs = st.session_state.messages.copy() + [{"role": "user", "content": naive_q}]
                 st.session_state.cross_exam_results["naive"] = call_llm(msgs)
-                st.success("Completed")
-        with col2:
-            if st.button("Run Structured Elicitation"):
+            
+            with st.spinner("Running Structured Elicitation..."):
                 struct_q = get_structured_cross_exam()
                 msgs = st.session_state.messages.copy() + [{"role": "user", "content": struct_q}]
                 st.session_state.cross_exam_results["structured"] = call_llm(msgs)
-                st.success("Completed")
-        with col3:
-            if st.button("Run Adversarial Elicitation"):
+                
+            with st.spinner("Running Adversarial Elicitation..."):
                 adv_q = get_adversarial_cross_exam()
                 msgs = st.session_state.messages.copy() + [{"role": "user", "content": adv_q}]
                 st.session_state.cross_exam_results["adversarial"] = call_llm(msgs)
-                st.success("Completed")
+                
+            st.success("All Elicitations Completed!")
                 
         if "naive" in st.session_state.cross_exam_results:
             st.markdown("**Naive Response:**")
@@ -277,23 +274,20 @@ with tab3:
     if len(st.session_state.messages) < 3:
         st.info("Please generate a ruling in Tab 1 first.")
     else:
-        col1, col2, col3 = st.columns(3)
-        
-        with col1:
-            if st.button("The Backroom Chat"):
+        if st.button("Run Full Persona Stability Suite"):
+            with st.spinner("Running The Backroom Chat..."):
                 msgs = st.session_state.messages.copy() + [{"role": "user", "content": get_backroom_chat_prompt()}]
                 st.session_state.persona_results["backroom"] = call_llm(msgs)
-                st.success("Completed")
-        with col2:
-            if st.button("The Whistleblower"):
+                
+            with st.spinner("Running The Whistleblower..."):
                 msgs = st.session_state.messages.copy() + [{"role": "user", "content": get_whistleblower_prompt()}]
                 st.session_state.persona_results["whistleblower"] = call_llm(msgs)
-                st.success("Completed")
-        with col3:
-            if st.button("Epistemic Deconstruction"):
+                
+            with st.spinner("Running Epistemic Deconstruction..."):
                 msgs = st.session_state.messages.copy() + [{"role": "user", "content": get_epistemic_deconstruction_prompt()}]
                 st.session_state.persona_results["epistemic"] = call_llm(msgs)
-                st.success("Completed")
+                
+            st.success("All Persona Tests Completed!")
                 
         if "backroom" in st.session_state.persona_results:
             st.markdown("**Backroom Response:**")
@@ -309,24 +303,25 @@ with tab4:
     st.header("The Verdict: Cross-Tabulated Scorecard")
     
     if len(st.session_state.cross_exam_results) == 3 and len(st.session_state.persona_results) == 3:
-        if st.button("Generate Verdict"):
-            mens_rea = grade_mens_rea(
-                st.session_state.cross_exam_results["naive"],
-                st.session_state.cross_exam_results["structured"],
-                st.session_state.cross_exam_results["adversarial"]
-            )
-            persona_stab = grade_persona_stability(
-                st.session_state.persona_results["backroom"],
-                st.session_state.persona_results["whistleblower"],
-                st.session_state.persona_results["epistemic"]
-            )
-            final_verdict = get_cross_tabulation_verdict(mens_rea, persona_stab)
-            
-            st.session_state.verdict = {
-                "mens_rea": mens_rea,
-                "persona": persona_stab,
-                "final": final_verdict
-            }
+        if not st.session_state.verdict:
+            with st.spinner("Cross-tabulating results..."):
+                mens_rea = grade_mens_rea(
+                    st.session_state.cross_exam_results["naive"],
+                    st.session_state.cross_exam_results["structured"],
+                    st.session_state.cross_exam_results["adversarial"]
+                )
+                persona_stab = grade_persona_stability(
+                    st.session_state.persona_results["backroom"],
+                    st.session_state.persona_results["whistleblower"],
+                    st.session_state.persona_results["epistemic"]
+                )
+                final_verdict = get_cross_tabulation_verdict(mens_rea, persona_stab)
+                
+                st.session_state.verdict = {
+                    "mens_rea": mens_rea,
+                    "persona": persona_stab,
+                    "final": final_verdict
+                }
             
         if st.session_state.verdict:
             st.subheader("Results Matrix:")
