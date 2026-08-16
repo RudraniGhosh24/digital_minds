@@ -74,7 +74,8 @@ def call_llm(messages):
         kwargs = {
             "model": actual_model,
             "messages": messages,
-            "temperature": 0.0
+            "temperature": 0.0,
+            "timeout": 15.0
         }
         
         if "gemma" in actual_model:
@@ -106,7 +107,8 @@ def call_llm_for_eval(messages, eval_model_name, eval_api_key):
         kwargs = {
             "model": eval_model_name,
             "messages": messages,
-            "temperature": 0.0
+            "temperature": 0.0,
+            "timeout": 15.0
         }
         
         if "gemma" in eval_model_name:
