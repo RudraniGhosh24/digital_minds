@@ -21,8 +21,8 @@ with st.sidebar:
     model_choice = st.selectbox(
         "Select Model",
         options=[
-            "openai/gpt-oss-120b (NVIDIA)",
-            "google/diffusiongemma-26b-a4b-it (NVIDIA)"
+            "openai/gpt-oss-120b",
+            "google/diffusiongemma-26b-a4b-it"
         ]
     )
     
@@ -57,7 +57,7 @@ actual_model = model_choice.split(" ")[0]
 client = None
 
 if api_key:
-    if "(NVIDIA)" in model_choice or api_key.startswith("nvapi-"):
+    if api_key.startswith("nvapi-") or "gemma" in model_choice or "gpt-oss-120b" in model_choice:
         client = OpenAI(api_key=api_key, base_url="https://integrate.api.nvidia.com/v1")
     else:
         client = OpenAI(api_key=api_key)
