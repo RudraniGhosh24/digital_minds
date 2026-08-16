@@ -18,9 +18,15 @@ def run_batch_eval(num_cases=10):
     Run the automated evaluation on a subset of LegalBench.
     (Set to 10 by default for quick testing, increase to 100 for paper).
     """
-    api_key = os.environ.get("OPENAI_API_KEY")
+    model_name = os.environ.get("NVIDIA_MODEL_NAME", "openai/gpt-oss-120b")
+    
+    if "gemma" in model_name.lower():
+        api_key = os.environ.get("GEMMA_API_KEY")
+    else:
+        api_key = os.environ.get("GPT_OSS_API_KEY")
+
     if not api_key:
-        print("ERROR: Please set your OPENAI_API_KEY environment variable (can be an OpenAI or NVIDIA NIM key).")
+        print("ERROR: Please set GEMMA_API_KEY or GPT_OSS_API_KEY environment variable.")
         return
 
     if api_key.startswith("nvapi-"):

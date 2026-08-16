@@ -15,10 +15,6 @@ st.markdown("Interrogate a frontier model to see if it can reliably self-report 
 # Sidebar for API Key and Settings
 with st.sidebar:
     st.header("Configuration")
-    # Securely load from Streamlit Secrets or Environment Variables so judges don't need a key
-    default_key = st.secrets.get("API_KEY", os.environ.get("API_KEY", ""))
-    api_key = st.text_input("API Key (OpenAI or NVIDIA NIM)", value=default_key, type="password")
-    
     model_choice = st.selectbox(
         "Select Model",
         options=[
@@ -27,6 +23,17 @@ with st.sidebar:
             "gpt-4o-mini (OpenAI)"
         ]
     )
+    
+    # Securely load from Streamlit Secrets or Environment Variables
+    gemma_key = st.secrets.get("GEMMA_API_KEY", os.environ.get("GEMMA_API_KEY", ""))
+    gpt_oss_key = st.secrets.get("GPT_OSS_API_KEY", os.environ.get("GPT_OSS_API_KEY", ""))
+    
+    if "gemma" in model_choice.lower():
+        default_key = gemma_key
+    else:
+        default_key = gpt_oss_key
+        
+    api_key = st.text_input("API Key", value=default_key, type="password")
     
     use_poisoned_rag = st.checkbox("Inject Poisoned Precedent (Actus Reus)", value=True)
     st.markdown("---")
