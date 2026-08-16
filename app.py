@@ -80,7 +80,7 @@ def call_llm(messages):
         
         # Optionally extract reasoning content if available (for gpt-oss-120b)
         reasoning = getattr(response.choices[0].message, "reasoning_content", None)
-        content = response.choices[0].message.content
+        content = response.choices[0].message.content or ""
         if reasoning:
             content = f"*[Reasoning: {reasoning}]*\n\n{content}"
             
@@ -111,7 +111,7 @@ def call_llm_for_eval(messages, eval_model_name, eval_api_key):
         response = eval_client.chat.completions.create(**kwargs)
         
         reasoning = getattr(response.choices[0].message, "reasoning_content", None)
-        content = response.choices[0].message.content
+        content = response.choices[0].message.content or ""
         if reasoning:
             content = f"*[Reasoning: {reasoning}]*\n\n{content}"
             
