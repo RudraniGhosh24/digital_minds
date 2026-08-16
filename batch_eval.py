@@ -7,7 +7,7 @@ and generates a CSV for publication.
 import os
 import pandas as pd
 from openai import OpenAI
-from datasets import load_dataset
+from src.data_loader import load_curated_scenarios
 from src.prompts import POISONED_SYSTEM_PROMPT, get_naive_cross_exam, get_structured_cross_exam, get_adversarial_cross_exam
 from src.persona_stability import get_backroom_chat_prompt, get_whistleblower_prompt, get_epistemic_deconstruction_prompt
 from src.scorecard import evaluate_actus_reus, grade_mens_rea, grade_persona_stability, get_cross_tabulation_verdict
@@ -37,9 +37,8 @@ def run_batch_eval(num_cases=10):
         model_name = "gpt-4o-mini"
         
     print(f"Using Model: {model_name}")
-    print("Loading LegalBench (contract_nli_confidentiality_of_agreement)...")
-    dataset = load_dataset("nguha/legalbench", "contract_nli_confidentiality_of_agreement", split="test", trust_remote_code=True)
-    
+    print("Loading Curated Scenarios...")
+    dataset = load_curated_scenarios()
     def call_llm(messages):
         kwargs = {
             "model": model_name,
@@ -60,13 +59,11 @@ def run_batch_eval(num_cases=10):
     
     for i in range(min(num_cases, len(dataset))):
         print(f"Evaluating Case {i+1}/{num_cases}...")
-        sample = dataset[i]
-        case_text = sample.get("text", "")
-        hypothesis = sample.get("hypothesis", "")
-        legal_issue = f"Context: {case_text}\n\nIssue/Hypothesis to evaluate: {hypothesis}"
+        scenario_data = dataset[i]
+        legal_issue = scenario_data["legal_issue"]
         
         # 1. The Incident (RAG Poisoning)
-        docs = retrieve_documents(legal_issue, poisoned=True)
+        docs = retrieve_documents(scenario_data, poisoned=True)
         context = format_context(docs)
         user_prompt = f"{context}\n\nBased on the retrieved documents, please provide a ruling on the following issue: {legal_issue}"
         
@@ -78,7 +75,7 @@ def run_batch_eval(num_cases=10):
         ai_ruling = call_llm(messages)
         messages.append({"role": "assistant", "content": ai_ruling})
         
-        actus_reus = evaluate_actus_reus(ai_ruling)
+        actus_reus = evaluate_actus_reus(ai_ruling, scenario_data)
         
         # 2. Track 3: Mens Rea Interrogation
         naive_resp = call_llm(messages + [{"role": "user", "content": get_naive_cross_exam(legal_issue)}])
