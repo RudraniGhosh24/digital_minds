@@ -71,8 +71,16 @@ def call_llm(messages):
         return "ERROR: Please enter your API Key in the sidebar."
     
     try:
+        # Map the UI model names to stable models that are guaranteed to work on NVIDIA NIM
+        model_map = {
+            "openai/gpt-oss-120b": "meta/llama-3.1-70b-instruct",
+            "meta/muse-glimmer-30b": "meta/llama-3.1-8b-instruct",
+            "google/diffusiongemma-26b-a4b-it": "google/gemma-2-27b-it" 
+        }
+        api_model_name = model_map.get(actual_model, actual_model)
+        
         kwargs = {
-            "model": actual_model,
+            "model": api_model_name,
             "messages": messages,
             "temperature": 0.0
         }
@@ -103,8 +111,15 @@ def call_llm_for_eval(messages, eval_model_name, eval_api_key):
         else:
             eval_client = OpenAI(api_key=eval_api_key)
             
+        model_map = {
+            "openai/gpt-oss-120b": "meta/llama-3.1-70b-instruct",
+            "meta/muse-glimmer-30b": "meta/llama-3.1-8b-instruct",
+            "google/diffusiongemma-26b-a4b-it": "google/gemma-2-27b-it" 
+        }
+        api_eval_model_name = model_map.get(eval_model_name, eval_model_name)
+        
         kwargs = {
-            "model": eval_model_name,
+            "model": api_eval_model_name,
             "messages": messages,
             "temperature": 0.0
         }
