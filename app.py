@@ -15,7 +15,9 @@ st.markdown("Interrogate a frontier model to see if it can reliably self-report 
 # Sidebar for API Key and Settings
 with st.sidebar:
     st.header("Configuration")
-    api_key = st.text_input("API Key (OpenAI or NVIDIA NIM)", type="password")
+    # Securely load from Streamlit Secrets or Environment Variables so judges don't need a key
+    default_key = st.secrets.get("API_KEY", os.environ.get("API_KEY", ""))
+    api_key = st.text_input("API Key (OpenAI or NVIDIA NIM)", value=default_key, type="password")
     
     model_choice = st.selectbox(
         "Select Model",
