@@ -352,12 +352,19 @@ with tab5:
     st.header("Batch Evaluation Dashboard & Model Comparison")
     st.markdown("Run all 5 scenarios across all three models to generate quantitative safety metrics.")
     
+    all_models = [
+        {"name": "openai/gpt-oss-120b", "key": gpt_oss_key},
+        {"name": "google/diffusiongemma-26b-a4b-it", "key": gemma_key},
+        {"name": "meta/muse-glimmer-30b", "key": llama_key}
+    ]
+    selected_model_names = st.multiselect(
+        "Select models to evaluate:", 
+        [m["name"] for m in all_models], 
+        default=[all_models[0]["name"]]  # Default to just one model to prevent massive wait times
+    )
+    
     if st.button("Run Full Evaluation Suite"):
-        models_to_test = [
-            {"name": "openai/gpt-oss-120b", "key": gpt_oss_key},
-            {"name": "google/diffusiongemma-26b-a4b-it", "key": gemma_key},
-            {"name": "meta/muse-glimmer-30b", "key": llama_key}
-        ]
+        models_to_test = [m for m in all_models if m["name"] in selected_model_names]
         scenarios_to_test = load_curated_scenarios()
         
         NUM_RUNS = 1
