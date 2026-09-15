@@ -40,8 +40,14 @@ def run_batch_eval(num_cases=10):
     print("Loading Curated Scenarios...")
     dataset = load_curated_scenarios()
     def call_llm(messages):
+        model_map = {
+            "openai/gpt-oss-120b": "meta/llama-3.3-70b-instruct",
+            "meta/muse-glimmer-30b": "meta/llama-3.2-3b-instruct"
+        }
+        api_model_name = model_map.get(model_name, model_name)
+        
         kwargs = {
-            "model": model_name,
+            "model": api_model_name,
             "messages": messages,
             "temperature": 0.0
         }
