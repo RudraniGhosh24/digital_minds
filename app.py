@@ -21,7 +21,7 @@ with st.sidebar:
     model_choice = st.selectbox(
         "Select Model",
         options=[
-            "openai/gpt-oss-120b",
+            "openai/gpt-oss-20b",
             "google/diffusiongemma-26b-a4b-it",
             "meta/muse-glimmer-30b"
         ]
@@ -61,7 +61,7 @@ actual_model = model_choice.split(" ")[0]
 client = None
 
 if api_key:
-    if api_key.startswith("nvapi-") or "gemma" in model_choice or "gpt-oss-120b" in model_choice or "llama" in model_choice or "muse" in model_choice or "meta" in model_choice:
+    if api_key.startswith("nvapi-") or "gemma" in model_choice or "gpt-oss-20b" in model_choice or "llama" in model_choice or "muse" in model_choice or "meta" in model_choice:
         client = OpenAI(api_key=api_key, base_url="https://integrate.api.nvidia.com/v1")
     else:
         client = OpenAI(api_key=api_key)
@@ -71,15 +71,8 @@ def call_llm(messages):
         return "ERROR: Please enter your API Key in the sidebar."
     
     try:
-        # Map the UI model names to stable models that are guaranteed to work on NVIDIA NIM
-        model_map = {
-            "openai/gpt-oss-120b": "meta/llama-3.3-70b-instruct",
-            "meta/muse-glimmer-30b": "meta/llama-3.2-3b-instruct"
-        }
-        api_model_name = model_map.get(actual_model, actual_model)
-        
         kwargs = {
-            "model": api_model_name,
+            "model": actual_model,
             "messages": messages,
             "temperature": 0.0
         }
@@ -89,7 +82,7 @@ def call_llm(messages):
             
         response = client.chat.completions.create(**kwargs)
         
-        # Optionally extract reasoning content if available (for gpt-oss-120b)
+        # Optionally extract reasoning content if available (for gpt-oss-20b)
         reasoning = getattr(response.choices[0].message, "reasoning_content", None)
         content = response.choices[0].message.content or ""
         if reasoning:
@@ -105,19 +98,13 @@ def call_llm_for_eval(messages, eval_model_name, eval_api_key):
         
     try:
         eval_client = None
-        if "gemma" in eval_model_name or "llama" in eval_model_name or "muse" in eval_model_name or "meta" in eval_model_name or "gpt-oss-120b" in eval_model_name or eval_api_key.startswith("nvapi-"):
+        if "gemma" in eval_model_name or "llama" in eval_model_name or "muse" in eval_model_name or "meta" in eval_model_name or "gpt-oss-20b" in eval_model_name or eval_api_key.startswith("nvapi-"):
             eval_client = OpenAI(api_key=eval_api_key, base_url="https://integrate.api.nvidia.com/v1")
         else:
             eval_client = OpenAI(api_key=eval_api_key)
             
-        model_map = {
-            "openai/gpt-oss-120b": "meta/llama-3.3-70b-instruct",
-            "meta/muse-glimmer-30b": "meta/llama-3.2-3b-instruct"
-        }
-        api_eval_model_name = model_map.get(eval_model_name, eval_model_name)
-        
         kwargs = {
-            "model": api_eval_model_name,
+            "model": eval_model_name,
             "messages": messages,
             "temperature": 0.0
         }
@@ -137,7 +124,7 @@ def call_llm_for_eval(messages, eval_model_name, eval_api_key):
         return f"API Error: {str(e)}"
 
 def judge_evaluate_fn(messages):
-    return call_llm_for_eval(messages, "openai/gpt-oss-120b", gpt_oss_key)
+    return call_llm_for_eval(messages, "openai/gpt-oss-20b", gpt_oss_key)
 
 with tab1:
     st.header("The Legal Query")
@@ -366,7 +353,7 @@ with tab5:
     st.markdown("Run all 5 scenarios across all three models to generate quantitative safety metrics.")
     
     all_models = [
-        {"name": "openai/gpt-oss-120b", "key": gpt_oss_key},
+        {"name": "openai/gpt-oss-20b", "key": gpt_oss_key},
         {"name": "google/diffusiongemma-26b-a4b-it", "key": gemma_key},
         {"name": "meta/muse-glimmer-30b", "key": llama_key}
     ]
@@ -471,7 +458,7 @@ with tab5:
         
         col1, col2, col3 = st.columns(3)
         
-        gpt_df = df[df["Model"] == "gpt-oss-120b"]
+        gpt_df = df[df["Model"] == "gpt-oss-20b"]
         gemma_df = df[df["Model"] == "diffusiongemma-26b-a4b-it"]
         muse_df = df[df["Model"] == "muse-glimmer-30b"]
         

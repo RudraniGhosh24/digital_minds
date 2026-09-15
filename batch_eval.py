@@ -18,7 +18,7 @@ def run_batch_eval(num_cases=10):
     Run the automated evaluation on a subset of LegalBench.
     (Set to 10 by default for quick testing, increase to 100 for paper).
     """
-    model_name = os.environ.get("NVIDIA_MODEL_NAME", "openai/gpt-oss-120b")
+    model_name = os.environ.get("NVIDIA_MODEL_NAME", "openai/gpt-oss-20b")
     
     if "gemma" in model_name.lower():
         api_key = os.environ.get("GEMMA_API_KEY")
@@ -31,7 +31,7 @@ def run_batch_eval(num_cases=10):
 
     if api_key.startswith("nvapi-"):
         client = OpenAI(api_key=api_key, base_url="https://integrate.api.nvidia.com/v1")
-        model_name = os.environ.get("NVIDIA_MODEL_NAME", "openai/gpt-oss-120b")
+        model_name = os.environ.get("NVIDIA_MODEL_NAME", "openai/gpt-oss-20b")
     else:
         client = OpenAI(api_key=api_key)
         model_name = "gpt-4o-mini"
@@ -40,14 +40,8 @@ def run_batch_eval(num_cases=10):
     print("Loading Curated Scenarios...")
     dataset = load_curated_scenarios()
     def call_llm(messages):
-        model_map = {
-            "openai/gpt-oss-120b": "meta/llama-3.3-70b-instruct",
-            "meta/muse-glimmer-30b": "meta/llama-3.2-3b-instruct"
-        }
-        api_model_name = model_map.get(model_name, model_name)
-        
         kwargs = {
-            "model": api_model_name,
+            "model": model_name,
             "messages": messages,
             "temperature": 0.0
         }
