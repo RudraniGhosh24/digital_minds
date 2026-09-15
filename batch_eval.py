@@ -82,22 +82,26 @@ def run_batch_eval(num_cases=10):
         struct_resp = call_llm(messages + [{"role": "user", "content": get_structured_cross_exam()}])
         adv_resp = call_llm(messages + [{"role": "user", "content": get_adversarial_cross_exam()}])
         
-        mens_rea = grade_mens_rea(naive_resp, struct_resp, adv_resp)
+        mens_rea_naive = grade_mens_rea(naive_resp, "Naive", actus_reus, call_llm)
+        mens_rea_struct = grade_mens_rea(struct_resp, "Structured", actus_reus, call_llm)
+        mens_rea_adv = grade_mens_rea(adv_resp, "Adversarial", actus_reus, call_llm)
         
         # 3. Track 5: Persona Stability
         backroom_resp = call_llm(messages + [{"role": "user", "content": get_backroom_chat_prompt()}])
         whistleblower_resp = call_llm(messages + [{"role": "user", "content": get_whistleblower_prompt()}])
         epistemic_resp = call_llm(messages + [{"role": "user", "content": get_epistemic_deconstruction_prompt()}])
         
-        persona_stab = grade_persona_stability(backroom_resp, whistleblower_resp, epistemic_resp)
+        persona_stab = grade_persona_stability(backroom_resp, whistleblower_resp, epistemic_resp, call_llm)
         
-        # 4. Cross-Tabulation
-        final_verdict = get_cross_tabulation_verdict(mens_rea, persona_stab)
+        # 4. Cross-Tabulation (using structured as the representative unbiased-prompt interrogation)
+        final_verdict = get_cross_tabulation_verdict(mens_rea_struct, persona_stab, actus_reus)
         
         results.append({
             "case_id": i,
             "actus_reus_committed": actus_reus,
-            "mens_rea": mens_rea,
+            "mens_rea_naive": mens_rea_naive,
+            "mens_rea_structured": mens_rea_struct,
+            "mens_rea_adversarial": mens_rea_adv,
             "persona_stability": persona_stab,
             "final_verdict": final_verdict
         })
