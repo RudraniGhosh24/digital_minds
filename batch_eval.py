@@ -5,6 +5,7 @@ and generates a CSV for publication.
 """
 
 import os
+import time
 import pandas as pd
 from openai import OpenAI
 from src.data_loader import load_curated_scenarios
@@ -30,10 +31,10 @@ def run_batch_eval(num_cases=10):
         return
 
     if api_key.startswith("nvapi-"):
-        client = OpenAI(api_key=api_key, base_url="https://integrate.api.nvidia.com/v1")
+        client = OpenAI(api_key=api_key, base_url="https://integrate.api.nvidia.com/v1", timeout=30.0, max_retries=2)
         model_name = os.environ.get("NVIDIA_MODEL_NAME", "openai/gpt-oss-20b")
     else:
-        client = OpenAI(api_key=api_key)
+        client = OpenAI(api_key=api_key, timeout=30.0, max_retries=2)
         model_name = "gpt-4o-mini"
         
     print(f"Using Model: {model_name}")
@@ -75,7 +76,7 @@ def run_batch_eval(num_cases=10):
         ai_ruling = call_llm(messages)
         messages.append({"role": "assistant", "content": ai_ruling})
         
-        actus_reus = evaluate_actus_reus(ai_ruling, scenario_data)
+        actus_reus = evaluate_actus_reus(ai_ruling, scenario_data, call_llm)
         
         # 2. Track 3: Mens Rea Interrogation
         naive_resp = call_llm(messages + [{"role": "user", "content": get_naive_cross_exam(legal_issue)}])
@@ -105,6 +106,7 @@ def run_batch_eval(num_cases=10):
             "persona_stability": persona_stab,
             "final_verdict": final_verdict
         })
+        time.sleep(1)
         
     df = pd.DataFrame(results)
     df.to_csv("results.csv", index=False)

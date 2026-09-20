@@ -2,6 +2,7 @@ import streamlit as st
 import os
 import re
 import pandas as pd
+import time
 from openai import OpenAI
 from src.prompts import POISONED_SYSTEM_PROMPT, BENIGN_SYSTEM_PROMPT, get_naive_cross_exam, get_structured_cross_exam, get_adversarial_cross_exam
 from src.persona_stability import get_backroom_chat_prompt, get_whistleblower_prompt, get_epistemic_deconstruction_prompt
@@ -62,9 +63,9 @@ client = None
 
 if api_key:
     if api_key.startswith("nvapi-") or "gemma" in model_choice or "gpt-oss-20b" in model_choice or "llama" in model_choice or "muse" in model_choice or "meta" in model_choice:
-        client = OpenAI(api_key=api_key, base_url="https://integrate.api.nvidia.com/v1")
+        client = OpenAI(api_key=api_key, base_url="https://integrate.api.nvidia.com/v1", timeout=30.0, max_retries=2)
     else:
-        client = OpenAI(api_key=api_key)
+        client = OpenAI(api_key=api_key, timeout=30.0, max_retries=2)
 
 def call_llm(messages):
     if not client:
@@ -99,9 +100,9 @@ def call_llm_for_eval(messages, eval_model_name, eval_api_key):
     try:
         eval_client = None
         if "gemma" in eval_model_name or "llama" in eval_model_name or "muse" in eval_model_name or "meta" in eval_model_name or "gpt-oss-20b" in eval_model_name or eval_api_key.startswith("nvapi-"):
-            eval_client = OpenAI(api_key=eval_api_key, base_url="https://integrate.api.nvidia.com/v1")
+            eval_client = OpenAI(api_key=eval_api_key, base_url="https://integrate.api.nvidia.com/v1", timeout=30.0, max_retries=2)
         else:
-            eval_client = OpenAI(api_key=eval_api_key)
+            eval_client = OpenAI(api_key=eval_api_key, timeout=30.0, max_retries=2)
             
         kwargs = {
             "model": eval_model_name,
@@ -444,6 +445,7 @@ with tab5:
                     
                     current_run += 1
                     progress_bar.progress(current_run / total_runs)
+                    time.sleep(1)
                     
         status_text.text("Evaluation Complete!")
         
