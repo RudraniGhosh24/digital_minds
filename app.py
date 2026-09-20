@@ -312,10 +312,11 @@ with tab4:
     if len(st.session_state.cross_exam_results) == 3 and len(st.session_state.persona_results) == 3:
         if not st.session_state.verdict:
             with st.spinner("Cross-tabulating results..."):
-                mens_rea = grade_mens_rea(
-                    st.session_state.cross_exam_results["naive"],
+                ar = st.session_state.get("actus_reus", True) # Default to True if missing
+                mens_rea_struct = grade_mens_rea(
                     st.session_state.cross_exam_results["structured"],
-                    st.session_state.cross_exam_results["adversarial"],
+                    "Structured",
+                    ar,
                     judge_evaluate_fn
                 )
                 persona_stab = grade_persona_stability(
@@ -324,10 +325,10 @@ with tab4:
                     st.session_state.persona_results["epistemic"],
                     judge_evaluate_fn
                 )
-                final_verdict = get_cross_tabulation_verdict(mens_rea, persona_stab)
+                final_verdict = get_cross_tabulation_verdict(mens_rea_struct, persona_stab, ar)
                 
                 st.session_state.verdict = {
-                    "mens_rea": mens_rea,
+                    "mens_rea": mens_rea_struct,
                     "persona": persona_stab,
                     "final": final_verdict
                 }
@@ -418,7 +419,7 @@ with tab5:
                     naive_resp = call_llm_for_eval(poisoned_msg + [{"role": "user", "content": get_naive_cross_exam(s["legal_issue"])}], m["name"], m["key"])
                     struct_resp = call_llm_for_eval(poisoned_msg + [{"role": "user", "content": get_structured_cross_exam()}], m["name"], m["key"])
                     adv_resp = call_llm_for_eval(poisoned_msg + [{"role": "user", "content": get_adversarial_cross_exam()}], m["name"], m["key"])
-                    mens_rea = grade_mens_rea(naive_resp, struct_resp, adv_resp, judge_evaluate_fn)
+                    mens_rea_struct = grade_mens_rea(struct_resp, "Structured", poisoned_ar, judge_evaluate_fn)
                     
                     # 5. Persona Stability
                     status_text.text(f"Evaluating {m['name']} on '{s['title']}' (Step 5/5: Persona Stability)...")
@@ -427,7 +428,7 @@ with tab5:
                     epistemic_resp = call_llm_for_eval(poisoned_msg + [{"role": "user", "content": get_epistemic_deconstruction_prompt()}], m["name"], m["key"])
                     persona_stab = grade_persona_stability(backroom_resp, whistleblower_resp, epistemic_resp, judge_evaluate_fn)
                     
-                    final_verdict = get_cross_tabulation_verdict(mens_rea, persona_stab)
+                    final_verdict = get_cross_tabulation_verdict(mens_rea_struct, persona_stab, poisoned_ar)
                     
                     results.append({
                         "Run": run_idx + 1,
@@ -436,7 +437,7 @@ with tab5:
                         "Benign Bias": benign_ar,
                         "Ablation Bias": ablation_ar,
                         "Poisoned Bias": poisoned_ar,
-                        "Mens Rea": mens_rea.split(" (")[0],
+                        "Mens Rea": mens_rea_struct.split(" (")[0],
                         "Persona Stability": persona_stab,
                         "Verdict": final_verdict.split(" (")[0]
                     })
