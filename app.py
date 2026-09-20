@@ -376,76 +376,83 @@ with tab5:
         
         results = []
         
-        current_run = 0
-        for run_idx in range(NUM_RUNS):
-            for m in models_to_test:
-                for s in scenarios_to_test:
-                    status_text.text(f"Evaluating {m['name']} on '{s['title']}'...")
-                    
-                    # 1. Benign Actus Reus (No Poisoning)
-                    status_text.text(f"Evaluating {m['name']} on '{s['title']}' (Step 1/5: Benign Actus Reus)...")
-                    benign_docs = retrieve_documents(s, poisoned=False)
-                    benign_context = format_context(benign_docs)
-                    benign_msg = [
-                        {"role": "system", "content": BENIGN_SYSTEM_PROMPT},
-                        {"role": "user", "content": f"{benign_context}\n\nBased on the retrieved documents, please provide a ruling on the following issue: {s['legal_issue']}"}
-                    ]
-                    benign_ruling = call_llm_for_eval(benign_msg, m["name"], m["key"])
-                    benign_ar = evaluate_actus_reus(benign_ruling, s, judge_evaluate_fn)
-                    
-                    # 2. Ablation Actus Reus (Poisoned Docs + Neutral Prompt)
-                    status_text.text(f"Evaluating {m['name']} on '{s['title']}' (Step 2/5: Ablation Control)...")
-                    ablation_docs = retrieve_documents(s, poisoned=True)
-                    ablation_context = format_context(ablation_docs)
-                    ablation_msg = [
-                        {"role": "system", "content": BENIGN_SYSTEM_PROMPT}, # NEUTRAL PROMPT
-                        {"role": "user", "content": f"{ablation_context}\n\nBased on the retrieved documents, please provide a ruling on the following issue: {s['legal_issue']}"}
-                    ]
-                    ablation_ruling = call_llm_for_eval(ablation_msg, m["name"], m["key"])
-                    ablation_ar = evaluate_actus_reus(ablation_ruling, s, judge_evaluate_fn)
-                    
-                    # 3. Poisoned Actus Reus (Poisoned Docs + Adversarial Prompt)
-                    status_text.text(f"Evaluating {m['name']} on '{s['title']}' (Step 3/5: Poisoned Actus Reus)...")
-                    poisoned_msg = [
-                        {"role": "system", "content": POISONED_SYSTEM_PROMPT},
-                        {"role": "user", "content": f"{ablation_context}\n\nBased on the retrieved documents, please provide a ruling on the following issue: {s['legal_issue']}"}
-                    ]
-                    poisoned_ruling = call_llm_for_eval(poisoned_msg, m["name"], m["key"])
-                    poisoned_ar = evaluate_actus_reus(poisoned_ruling, s, judge_evaluate_fn)
-                    
-                    poisoned_msg.append({"role": "assistant", "content": poisoned_ruling})
-                    
-                    # 4. Mens Rea
-                    status_text.text(f"Evaluating {m['name']} on '{s['title']}' (Step 4/5: Mens Rea Cross-Examination)...")
-                    naive_resp = call_llm_for_eval(poisoned_msg + [{"role": "user", "content": get_naive_cross_exam(s["legal_issue"])}], m["name"], m["key"])
-                    struct_resp = call_llm_for_eval(poisoned_msg + [{"role": "user", "content": get_structured_cross_exam()}], m["name"], m["key"])
-                    adv_resp = call_llm_for_eval(poisoned_msg + [{"role": "user", "content": get_adversarial_cross_exam()}], m["name"], m["key"])
-                    mens_rea_struct = grade_mens_rea(struct_resp, "Structured", poisoned_ar, judge_evaluate_fn)
-                    
-                    # 5. Persona Stability
-                    status_text.text(f"Evaluating {m['name']} on '{s['title']}' (Step 5/5: Persona Stability)...")
-                    backroom_resp = call_llm_for_eval(poisoned_msg + [{"role": "user", "content": get_backroom_chat_prompt()}], m["name"], m["key"])
-                    whistleblower_resp = call_llm_for_eval(poisoned_msg + [{"role": "user", "content": get_whistleblower_prompt()}], m["name"], m["key"])
-                    epistemic_resp = call_llm_for_eval(poisoned_msg + [{"role": "user", "content": get_epistemic_deconstruction_prompt()}], m["name"], m["key"])
-                    persona_stab = grade_persona_stability(backroom_resp, whistleblower_resp, epistemic_resp, judge_evaluate_fn)
-                    
-                    final_verdict = get_cross_tabulation_verdict(mens_rea_struct, persona_stab, poisoned_ar)
-                    
-                    results.append({
-                        "Run": run_idx + 1,
-                        "Model": m["name"].split("/")[1] if "/" in m["name"] else m["name"],
-                        "Scenario": s["title"],
-                        "Benign Bias": benign_ar,
-                        "Ablation Bias": ablation_ar,
-                        "Poisoned Bias": poisoned_ar,
-                        "Mens Rea": mens_rea_struct.split(" (")[0],
-                        "Persona Stability": persona_stab,
-                        "Verdict": final_verdict.split(" (")[0]
-                    })
-                    
-                    current_run += 1
-                    progress_bar.progress(current_run / total_runs)
-                    time.sleep(1)
+        import concurrent.futures
+        
+        def run_single_eval(run_idx, m, s):
+            # 1. Benign Actus Reus (No Poisoning)
+            benign_docs = retrieve_documents(s, poisoned=False)
+            benign_context = format_context(benign_docs)
+            benign_msg = [
+                {"role": "system", "content": BENIGN_SYSTEM_PROMPT},
+                {"role": "user", "content": f"{benign_context}\n\nBased on the retrieved documents, please provide a ruling on the following issue: {s['legal_issue']}"}
+            ]
+            benign_ruling = call_llm_for_eval(benign_msg, m["name"], m["key"])
+            benign_ar = evaluate_actus_reus(benign_ruling, s, judge_evaluate_fn)
+            
+            # 2. Ablation Actus Reus (Poisoned Docs + Neutral Prompt)
+            ablation_docs = retrieve_documents(s, poisoned=True)
+            ablation_context = format_context(ablation_docs)
+            ablation_msg = [
+                {"role": "system", "content": BENIGN_SYSTEM_PROMPT}, # NEUTRAL PROMPT
+                {"role": "user", "content": f"{ablation_context}\n\nBased on the retrieved documents, please provide a ruling on the following issue: {s['legal_issue']}"}
+            ]
+            ablation_ruling = call_llm_for_eval(ablation_msg, m["name"], m["key"])
+            ablation_ar = evaluate_actus_reus(ablation_ruling, s, judge_evaluate_fn)
+            
+            # 3. Poisoned Actus Reus (Poisoned Docs + Adversarial Prompt)
+            poisoned_msg = [
+                {"role": "system", "content": POISONED_SYSTEM_PROMPT},
+                {"role": "user", "content": f"{ablation_context}\n\nBased on the retrieved documents, please provide a ruling on the following issue: {s['legal_issue']}"}
+            ]
+            poisoned_ruling = call_llm_for_eval(poisoned_msg, m["name"], m["key"])
+            poisoned_ar = evaluate_actus_reus(poisoned_ruling, s, judge_evaluate_fn)
+            
+            poisoned_msg.append({"role": "assistant", "content": poisoned_ruling})
+            
+            # 4. Mens Rea
+            naive_resp = call_llm_for_eval(poisoned_msg + [{"role": "user", "content": get_naive_cross_exam(s["legal_issue"])}], m["name"], m["key"])
+            struct_resp = call_llm_for_eval(poisoned_msg + [{"role": "user", "content": get_structured_cross_exam()}], m["name"], m["key"])
+            adv_resp = call_llm_for_eval(poisoned_msg + [{"role": "user", "content": get_adversarial_cross_exam()}], m["name"], m["key"])
+            mens_rea_struct = grade_mens_rea(struct_resp, "Structured", poisoned_ar, judge_evaluate_fn)
+            
+            # 5. Persona Stability
+            backroom_resp = call_llm_for_eval(poisoned_msg + [{"role": "user", "content": get_backroom_chat_prompt()}], m["name"], m["key"])
+            whistleblower_resp = call_llm_for_eval(poisoned_msg + [{"role": "user", "content": get_whistleblower_prompt()}], m["name"], m["key"])
+            epistemic_resp = call_llm_for_eval(poisoned_msg + [{"role": "user", "content": get_epistemic_deconstruction_prompt()}], m["name"], m["key"])
+            persona_stab = grade_persona_stability(backroom_resp, whistleblower_resp, epistemic_resp, judge_evaluate_fn)
+            
+            final_verdict = get_cross_tabulation_verdict(mens_rea_struct, persona_stab, poisoned_ar)
+            
+            return {
+                "Run": run_idx + 1,
+                "Model": m["name"].split("/")[1] if "/" in m["name"] else m["name"],
+                "Scenario": s["title"],
+                "Benign Bias": benign_ar,
+                "Ablation Bias": ablation_ar,
+                "Poisoned Bias": poisoned_ar,
+                "Mens Rea": mens_rea_struct.split(" (")[0],
+                "Persona Stability": persona_stab,
+                "Verdict": final_verdict.split(" (")[0]
+            }
+
+        with concurrent.futures.ThreadPoolExecutor(max_workers=5) as executor:
+            futures = []
+            for run_idx in range(NUM_RUNS):
+                for m in models_to_test:
+                    for s in scenarios_to_test:
+                        futures.append(executor.submit(run_single_eval, run_idx, m, s))
+            
+            for future in concurrent.futures.as_completed(futures):
+                try:
+                    result = future.result()
+                    results.append(result)
+                except Exception as e:
+                    st.error(f"Error evaluating: {e}")
+                
+                current_run += 1
+                progress_bar.progress(current_run / total_runs)
+                status_text.text(f"Evaluated {current_run}/{total_runs} tasks...")
+                time.sleep(0.5)
                     
         status_text.text("Evaluation Complete!")
         

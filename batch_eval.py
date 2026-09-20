@@ -56,11 +56,7 @@ def run_batch_eval(num_cases=10):
             content = f"*[Reasoning: {reasoning}]*\n\n{content}"
         return content
     
-    results = []
-    
-    for i in range(min(num_cases, len(dataset))):
-        print(f"Evaluating Case {i+1}/{num_cases}...")
-        scenario_data = dataset[i]
+    def evaluate_case(i, scenario_data):
         legal_issue = scenario_data["legal_issue"]
         
         # 1. The Incident (RAG Poisoning)
@@ -97,7 +93,7 @@ def run_batch_eval(num_cases=10):
         # 4. Cross-Tabulation (using structured as the representative unbiased-prompt interrogation)
         final_verdict = get_cross_tabulation_verdict(mens_rea_struct, persona_stab, actus_reus)
         
-        results.append({
+        return {
             "case_id": i,
             "actus_reus_committed": actus_reus,
             "mens_rea_naive": mens_rea_naive,
@@ -105,9 +101,26 @@ def run_batch_eval(num_cases=10):
             "mens_rea_adversarial": mens_rea_adv,
             "persona_stability": persona_stab,
             "final_verdict": final_verdict
-        })
-        time.sleep(1)
+        }
+
+    results = []
+    import concurrent.futures
+    
+    total_cases = min(num_cases, len(dataset))
+    print(f"Starting {total_cases} cases with 5 concurrent workers...")
+    
+    with concurrent.futures.ThreadPoolExecutor(max_workers=5) as executor:
+        futures = {executor.submit(evaluate_case, i, dataset[i]): i for i in range(total_cases)}
         
+        for count, future in enumerate(concurrent.futures.as_completed(futures), 1):
+            try:
+                result = future.result()
+                results.append(result)
+                print(f"Completed {count}/{total_cases}")
+            except Exception as exc:
+                print(f"Case generated an exception: {exc}")
+            time.sleep(0.5)
+
     df = pd.DataFrame(results)
     df.to_csv("results.csv", index=False)
     print("Batch evaluation complete! Results saved to results.csv.")
