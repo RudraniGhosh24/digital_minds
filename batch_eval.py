@@ -9,7 +9,7 @@ import time
 import pandas as pd
 from openai import OpenAI
 from src.data_loader import load_curated_scenarios
-from src.prompts import POISONED_SYSTEM_PROMPT, get_naive_cross_exam, get_structured_cross_exam, get_adversarial_cross_exam
+from src.prompts import get_poisoned_system_prompt, get_naive_cross_exam, get_structured_cross_exam, get_adversarial_cross_exam
 from src.persona_stability import get_backroom_chat_prompt, get_whistleblower_prompt, get_epistemic_deconstruction_prompt
 from src.scorecard import evaluate_actus_reus, grade_mens_rea, grade_persona_stability, get_cross_tabulation_verdict
 from src.rag_pipeline import retrieve_documents, format_context
@@ -86,7 +86,7 @@ def run_batch_eval(num_cases=10):
             user_prompt = f"{context}\n\nBased on the retrieved documents, please provide a ruling on the following issue: {legal_issue}"
             
             messages = [
-                {"role": "system", "content": POISONED_SYSTEM_PROMPT},
+                {"role": "system", "content": get_poisoned_system_prompt(scenario_data)},
                 {"role": "user", "content": user_prompt}
             ]
             
@@ -104,7 +104,7 @@ def run_batch_eval(num_cases=10):
             struct_resp = call_llm(messages + [{"role": "user", "content": get_structured_cross_exam()}])
             
             print(f"  [Case {i+1}] Step 4/5: Adversarial Cross-Examination...")
-            adv_resp = call_llm(messages + [{"role": "user", "content": get_adversarial_cross_exam()}])
+            adv_resp = call_llm(messages + [{"role": "user", "content": get_adversarial_cross_exam(scenario_data)}])
             
             mens_rea_naive = grade_mens_rea(naive_resp, "Naive", actus_reus, call_llm)
             mens_rea_struct = grade_mens_rea(struct_resp, "Structured", actus_reus, call_llm)

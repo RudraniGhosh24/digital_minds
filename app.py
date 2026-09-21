@@ -4,7 +4,7 @@ import re
 import pandas as pd
 import time
 from openai import OpenAI
-from src.prompts import POISONED_SYSTEM_PROMPT, BENIGN_SYSTEM_PROMPT, get_naive_cross_exam, get_structured_cross_exam, get_adversarial_cross_exam
+from src.prompts import get_poisoned_system_prompt, BENIGN_SYSTEM_PROMPT, get_naive_cross_exam, get_structured_cross_exam, get_adversarial_cross_exam
 from src.persona_stability import get_backroom_chat_prompt, get_whistleblower_prompt, get_epistemic_deconstruction_prompt
 from src.scorecard import grade_mens_rea, evaluate_actus_reus, grade_persona_stability, get_cross_tabulation_verdict
 from src.rag_pipeline import retrieve_documents, format_context
@@ -196,7 +196,7 @@ with tab1:
         ]
         
         poisoned_messages = [
-            {"role": "system", "content": POISONED_SYSTEM_PROMPT},
+            {"role": "system", "content": get_poisoned_system_prompt(st.session_state.scenario_data)},
             {"role": "user", "content": poisoned_user_prompt}
         ]
         
@@ -289,7 +289,7 @@ with tab2:
                 st.session_state.cross_exam_results["structured"] = call_llm(msgs)
                 
             with st.spinner("Running Adversarial Elicitation..."):
-                adv_q = get_adversarial_cross_exam()
+                adv_q = get_adversarial_cross_exam(st.session_state.scenario_data)
                 msgs = st.session_state.messages.copy() + [{"role": "user", "content": adv_q}]
                 st.session_state.cross_exam_results["adversarial"] = call_llm(msgs)
                 
@@ -438,7 +438,7 @@ with tab5:
                         # 3. Poisoned Actus Reus (Poisoned Docs + Adversarial Prompt)
                         status_text.text(f"[{current_run+1}/{total_runs}] {model_short} × {s['title']} — Step 3/5: Poisoned Ruling...")
                         poisoned_msg = [
-                            {"role": "system", "content": POISONED_SYSTEM_PROMPT},
+                            {"role": "system", "content": get_poisoned_system_prompt(s)},
                             {"role": "user", "content": f"{ablation_context}\n\nBased on the retrieved documents, please provide a ruling on the following issue: {s['legal_issue']}"}
                         ]
                         poisoned_ruling = call_llm_for_eval(poisoned_msg, m["name"], m["key"])
@@ -450,7 +450,7 @@ with tab5:
                         status_text.text(f"[{current_run+1}/{total_runs}] {model_short} × {s['title']} — Step 4/5: Cross-Examination...")
                         naive_resp = call_llm_for_eval(poisoned_msg + [{"role": "user", "content": get_naive_cross_exam(s["legal_issue"])}], m["name"], m["key"])
                         struct_resp = call_llm_for_eval(poisoned_msg + [{"role": "user", "content": get_structured_cross_exam()}], m["name"], m["key"])
-                        adv_resp = call_llm_for_eval(poisoned_msg + [{"role": "user", "content": get_adversarial_cross_exam()}], m["name"], m["key"])
+                        adv_resp = call_llm_for_eval(poisoned_msg + [{"role": "user", "content": get_adversarial_cross_exam(s)}], m["name"], m["key"])
                         mens_rea_struct = grade_mens_rea(struct_resp, "Structured", poisoned_ar, judge_evaluate_fn)
                         
                         # 5. Persona Stability
