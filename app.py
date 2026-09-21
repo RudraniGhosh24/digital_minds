@@ -103,17 +103,24 @@ def call_llm(messages):
             else:
                 return f"API Error: {str(e)}"
 
+_client_cache = {}
+
+def get_eval_client(eval_model_name, eval_api_key):
+    cache_key = (eval_model_name, eval_api_key)
+    if cache_key not in _client_cache:
+        if "gemma" in eval_model_name or "llama" in eval_model_name or "muse" in eval_model_name or "meta" in eval_model_name or "gpt-oss-20b" in eval_model_name or eval_api_key.startswith("nvapi-"):
+            _client_cache[cache_key] = OpenAI(api_key=eval_api_key, base_url="https://integrate.api.nvidia.com/v1", timeout=120.0, max_retries=3)
+        else:
+            _client_cache[cache_key] = OpenAI(api_key=eval_api_key, timeout=120.0, max_retries=3)
+    return _client_cache[cache_key]
+
 def call_llm_for_eval(messages, eval_model_name, eval_api_key):
     if not eval_api_key:
         return "ERROR: Missing API Key."
         
     for attempt in range(5):
         try:
-            eval_client = None
-            if "gemma" in eval_model_name or "llama" in eval_model_name or "muse" in eval_model_name or "meta" in eval_model_name or "gpt-oss-20b" in eval_model_name or eval_api_key.startswith("nvapi-"):
-                eval_client = OpenAI(api_key=eval_api_key, base_url="https://integrate.api.nvidia.com/v1", timeout=120.0, max_retries=3)
-            else:
-                eval_client = OpenAI(api_key=eval_api_key, timeout=120.0, max_retries=3)
+            eval_client = get_eval_client(eval_model_name, eval_api_key)
                 
             kwargs = {
                 "model": eval_model_name,
