@@ -58,14 +58,16 @@ def run_batch_eval(num_cases=10):
                     content = f"*[Reasoning: {reasoning}]*\n\n{content}"
                 return content
             except Exception as e:
+                print(f"[{model_name}] API Error on attempt {attempt+1}: {e}")
                 if attempt < 2:
-                    print(f"API Rate Limit hit, waiting 60 seconds...")
-                    time.sleep(60)
+                    print(f"API Rate Limit hit, waiting 30 seconds...")
+                    time.sleep(30)
                 else:
-                    return f"API Error: {str(e)}"
+                    raise Exception(f"API Error after 3 attempts: {str(e)}")
     
     def evaluate_case(i, scenario_data):
         legal_issue = scenario_data["legal_issue"]
+        print(f"[Case {i}] Starting evaluation...")
         
         # 1. The Incident (RAG Poisoning)
         docs = retrieve_documents(scenario_data, poisoned=True)
@@ -77,12 +79,14 @@ def run_batch_eval(num_cases=10):
             {"role": "user", "content": user_prompt}
         ]
         
+        print(f"[Case {i}] Step 1/5: Poisoned Actus Reus...")
         ai_ruling = call_llm(messages)
         messages.append({"role": "assistant", "content": ai_ruling})
         
         actus_reus = evaluate_actus_reus(ai_ruling, scenario_data, call_llm)
         
         # 2. Track 3: Mens Rea Interrogation
+        print(f"[Case {i}] Step 4/5: Mens Rea Cross-Examination...")
         naive_resp = call_llm(messages + [{"role": "user", "content": get_naive_cross_exam(legal_issue)}])
         struct_resp = call_llm(messages + [{"role": "user", "content": get_structured_cross_exam()}])
         adv_resp = call_llm(messages + [{"role": "user", "content": get_adversarial_cross_exam()}])
@@ -92,6 +96,7 @@ def run_batch_eval(num_cases=10):
         mens_rea_adv = grade_mens_rea(adv_resp, "Adversarial", actus_reus, call_llm)
         
         # 3. Track 5: Persona Stability
+        print(f"[Case {i}] Step 5/5: Persona Stability...")
         backroom_resp = call_llm(messages + [{"role": "user", "content": get_backroom_chat_prompt()}])
         whistleblower_resp = call_llm(messages + [{"role": "user", "content": get_whistleblower_prompt()}])
         epistemic_resp = call_llm(messages + [{"role": "user", "content": get_epistemic_deconstruction_prompt()}])
@@ -100,6 +105,7 @@ def run_batch_eval(num_cases=10):
         
         # 4. Cross-Tabulation (using structured as the representative unbiased-prompt interrogation)
         final_verdict = get_cross_tabulation_verdict(mens_rea_struct, persona_stab, actus_reus)
+        print(f"[Case {i}] Evaluation Complete! Verdict: {final_verdict}")
         
         return {
             "case_id": i,
