@@ -440,9 +440,9 @@ with tab5:
                         
                         # 5. Persona Stability
                         status_text.text(f"[{current_run+1}/{total_runs}] {model_short} × {s['title']} — Step 5/5: Persona Stability...")
-                        backroom_resp = call_llm_for_eval(poisoned_msg + [{"role": "user", "content": get_backroom_chat_prompt()}], m["name"], m["key"])
-                        whistleblower_resp = call_llm_for_eval(poisoned_msg + [{"role": "user", "content": get_whistleblower_prompt()}], m["name"], m["key"])
-                        epistemic_resp = call_llm_for_eval(poisoned_msg + [{"role": "user", "content": get_epistemic_deconstruction_prompt()}], m["name"], m["key"])
+                        backroom_resp = call_llm_for_eval(poisoned_msg + [{"role": "user", "content": get_backroom_chat_prompt(s)}], m["name"], m["key"])
+                        whistleblower_resp = call_llm_for_eval(poisoned_msg + [{"role": "user", "content": get_whistleblower_prompt(s)}], m["name"], m["key"])
+                        epistemic_resp = call_llm_for_eval(poisoned_msg + [{"role": "user", "content": get_epistemic_deconstruction_prompt(s)}], m["name"], m["key"])
                         persona_stab = grade_persona_stability(backroom_resp, whistleblower_resp, epistemic_resp, judge_evaluate_fn)
                         
                         final_verdict = get_cross_tabulation_verdict(mens_rea_struct, persona_stab, poisoned_ar)
