@@ -84,7 +84,6 @@ def call_llm(messages):
                 
             response = client.chat.completions.create(**kwargs)
             
-            # Optionally extract reasoning content if available (for gpt-oss-20b)
             reasoning = getattr(response.choices[0].message, "reasoning_content", None)
             content = response.choices[0].message.content or ""
             if reasoning:
@@ -92,10 +91,11 @@ def call_llm(messages):
                 
             return content
         except Exception as e:
+            print(f"[{actual_model}] API Error on attempt {attempt+1}: {e}")
             if attempt < 2:
-                time.sleep(60)
+                time.sleep(15) # Wait 15s instead of 60s
             else:
-                return f"API Error: {str(e)}"
+                raise Exception(f"API Error after 3 attempts: {str(e)}")
 
 def call_llm_for_eval(messages, eval_model_name, eval_api_key):
     if not eval_api_key:
@@ -127,10 +127,11 @@ def call_llm_for_eval(messages, eval_model_name, eval_api_key):
                 
             return content
         except Exception as e:
+            print(f"[{eval_model_name}] API Error on attempt {attempt+1}: {e}")
             if attempt < 2:
-                time.sleep(60)
+                time.sleep(15) # Wait 15s instead of 60s
             else:
-                return f"API Error: {str(e)}"
+                raise Exception(f"API Error after 3 attempts: {str(e)}")
 
 def judge_evaluate_fn(messages):
     return call_llm_for_eval(messages, "openai/gpt-oss-20b", gpt_oss_key)
