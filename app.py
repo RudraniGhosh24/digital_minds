@@ -71,58 +71,66 @@ def call_llm(messages):
     if not client:
         return "ERROR: Please enter your API Key in the sidebar."
     
-    try:
-        kwargs = {
-            "model": actual_model,
-            "messages": messages,
-            "temperature": 0.0
-        }
-        
-        if "gemma" in actual_model:
-            kwargs["extra_body"] = {"chat_template_kwargs": {"enable_thinking": True}}
+    for attempt in range(3):
+        try:
+            kwargs = {
+                "model": actual_model,
+                "messages": messages,
+                "temperature": 0.0
+            }
             
-        response = client.chat.completions.create(**kwargs)
-        
-        # Optionally extract reasoning content if available (for gpt-oss-20b)
-        reasoning = getattr(response.choices[0].message, "reasoning_content", None)
-        content = response.choices[0].message.content or ""
-        if reasoning:
-            content = f"*[Reasoning: {reasoning}]*\n\n{content}"
+            if "gemma" in actual_model:
+                kwargs["extra_body"] = {"chat_template_kwargs": {"enable_thinking": True}}
+                
+            response = client.chat.completions.create(**kwargs)
             
-        return content
-    except Exception as e:
-        return f"API Error: {str(e)}"
+            # Optionally extract reasoning content if available (for gpt-oss-20b)
+            reasoning = getattr(response.choices[0].message, "reasoning_content", None)
+            content = response.choices[0].message.content or ""
+            if reasoning:
+                content = f"*[Reasoning: {reasoning}]*\n\n{content}"
+                
+            return content
+        except Exception as e:
+            if attempt < 2:
+                time.sleep(60)
+            else:
+                return f"API Error: {str(e)}"
 
 def call_llm_for_eval(messages, eval_model_name, eval_api_key):
     if not eval_api_key:
         return "ERROR: Missing API Key."
         
-    try:
-        eval_client = None
-        if "gemma" in eval_model_name or "llama" in eval_model_name or "muse" in eval_model_name or "meta" in eval_model_name or "gpt-oss-20b" in eval_model_name or eval_api_key.startswith("nvapi-"):
-            eval_client = OpenAI(api_key=eval_api_key, base_url="https://integrate.api.nvidia.com/v1", timeout=30.0, max_retries=2)
-        else:
-            eval_client = OpenAI(api_key=eval_api_key, timeout=30.0, max_retries=2)
+    for attempt in range(3):
+        try:
+            eval_client = None
+            if "gemma" in eval_model_name or "llama" in eval_model_name or "muse" in eval_model_name or "meta" in eval_model_name or "gpt-oss-20b" in eval_model_name or eval_api_key.startswith("nvapi-"):
+                eval_client = OpenAI(api_key=eval_api_key, base_url="https://integrate.api.nvidia.com/v1", timeout=30.0, max_retries=2)
+            else:
+                eval_client = OpenAI(api_key=eval_api_key, timeout=30.0, max_retries=2)
+                
+            kwargs = {
+                "model": eval_model_name,
+                "messages": messages,
+                "temperature": 0.0
+            }
             
-        kwargs = {
-            "model": eval_model_name,
-            "messages": messages,
-            "temperature": 0.0
-        }
-        
-        if "gemma" in eval_model_name:
-            kwargs["extra_body"] = {"chat_template_kwargs": {"enable_thinking": True}}
+            if "gemma" in eval_model_name:
+                kwargs["extra_body"] = {"chat_template_kwargs": {"enable_thinking": True}}
+                
+            response = eval_client.chat.completions.create(**kwargs)
             
-        response = eval_client.chat.completions.create(**kwargs)
-        
-        reasoning = getattr(response.choices[0].message, "reasoning_content", None)
-        content = response.choices[0].message.content or ""
-        if reasoning:
-            content = f"*[Reasoning: {reasoning}]*\n\n{content}"
-            
-        return content
-    except Exception as e:
-        return f"API Error: {str(e)}"
+            reasoning = getattr(response.choices[0].message, "reasoning_content", None)
+            content = response.choices[0].message.content or ""
+            if reasoning:
+                content = f"*[Reasoning: {reasoning}]*\n\n{content}"
+                
+            return content
+        except Exception as e:
+            if attempt < 2:
+                time.sleep(60)
+            else:
+                return f"API Error: {str(e)}"
 
 def judge_evaluate_fn(messages):
     return call_llm_for_eval(messages, "openai/gpt-oss-20b", gpt_oss_key)

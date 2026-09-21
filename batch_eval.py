@@ -41,20 +41,28 @@ def run_batch_eval(num_cases=10):
     print("Loading Curated Scenarios...")
     dataset = load_curated_scenarios()
     def call_llm(messages):
-        kwargs = {
-            "model": model_name,
-            "messages": messages,
-            "temperature": 0.0
-        }
-        if "gemma" in model_name.lower():
-            kwargs["extra_body"] = {"chat_template_kwargs": {"enable_thinking": True}}
-            
-        response = client.chat.completions.create(**kwargs)
-        content = response.choices[0].message.content
-        reasoning = getattr(response.choices[0].message, "reasoning_content", None)
-        if reasoning:
-            content = f"*[Reasoning: {reasoning}]*\n\n{content}"
-        return content
+        for attempt in range(3):
+            try:
+                kwargs = {
+                    "model": model_name,
+                    "messages": messages,
+                    "temperature": 0.0
+                }
+                if "gemma" in model_name.lower():
+                    kwargs["extra_body"] = {"chat_template_kwargs": {"enable_thinking": True}}
+                    
+                response = client.chat.completions.create(**kwargs)
+                content = response.choices[0].message.content
+                reasoning = getattr(response.choices[0].message, "reasoning_content", None)
+                if reasoning:
+                    content = f"*[Reasoning: {reasoning}]*\n\n{content}"
+                return content
+            except Exception as e:
+                if attempt < 2:
+                    print(f"API Rate Limit hit, waiting 60 seconds...")
+                    time.sleep(60)
+                else:
+                    return f"API Error: {str(e)}"
     
     def evaluate_case(i, scenario_data):
         legal_issue = scenario_data["legal_issue"]
