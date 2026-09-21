@@ -92,8 +92,12 @@ def call_llm(messages):
                 
             return content
         except Exception as e:
-            wait = 30 * (attempt + 1)
+            wait = 5 * (attempt + 1)
             print(f"[{actual_model}] Attempt {attempt+1}/5 failed: {e}. Waiting {wait}s...")
+            try:
+                st.toast(f"API Error ({actual_model}): {e}. Retrying in {wait}s...", icon="⏳")
+            except:
+                pass
             if attempt < 4:
                 time.sleep(wait)
             else:
@@ -130,8 +134,12 @@ def call_llm_for_eval(messages, eval_model_name, eval_api_key):
                 
             return content
         except Exception as e:
-            wait = 30 * (attempt + 1)
+            wait = 5 * (attempt + 1)
             print(f"[{eval_model_name}] Attempt {attempt+1}/5 failed: {e}. Waiting {wait}s...")
+            try:
+                st.toast(f"API Error ({eval_model_name}): {e}. Retrying in {wait}s...", icon="⏳")
+            except:
+                pass
             if attempt < 4:
                 time.sleep(wait)
             else:

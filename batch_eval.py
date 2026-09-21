@@ -60,7 +60,7 @@ def run_batch_eval(num_cases=10):
                     content = f"*[Reasoning: {reasoning}]*\n\n{content}"
                 return content
             except Exception as e:
-                wait = 30 * (attempt + 1)
+                wait = 5 * (attempt + 1)
                 print(f"  [{model_name}] Attempt {attempt+1}/5 failed: {e}. Waiting {wait}s...")
                 if attempt < 4:
                     time.sleep(wait)
