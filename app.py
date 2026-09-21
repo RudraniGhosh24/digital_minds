@@ -92,16 +92,26 @@ def call_llm(messages):
                 
             return content
         except Exception as e:
-            wait = 5 * (attempt + 1)
-            print(f"[{actual_model}] Attempt {attempt+1}/5 failed: {e}. Waiting {wait}s...")
-            try:
-                st.toast(f"API Error ({actual_model}): {e}. Retrying in {wait}s...", icon="⏳")
-            except:
-                pass
-            if attempt < 4:
+            error_str = str(e).lower()
+            if "429" in error_str or "rate limit" in error_str or "timeout" in error_str:
+                wait = 60
+                print(f"[{actual_model}] Rate limit/Timeout hit. Waiting {wait}s to recover...")
+                try:
+                    st.toast(f"Rate Limit Hit ({actual_model}): Waiting {wait}s to recover...", icon="⏳")
+                except:
+                    pass
                 time.sleep(wait)
             else:
-                return f"API Error: {str(e)}"
+                wait = 5 * (attempt + 1)
+                print(f"[{actual_model}] Attempt {attempt+1}/5 failed: {e}. Waiting {wait}s...")
+                try:
+                    st.toast(f"API Error ({actual_model}): {e}. Retrying in {wait}s...", icon="⏳")
+                except:
+                    pass
+                if attempt < 4:
+                    time.sleep(wait)
+                else:
+                    return f"API Error: {str(e)}"
 
 _client_cache = {}
 
@@ -141,16 +151,26 @@ def call_llm_for_eval(messages, eval_model_name, eval_api_key):
                 
             return content
         except Exception as e:
-            wait = 5 * (attempt + 1)
-            print(f"[{eval_model_name}] Attempt {attempt+1}/5 failed: {e}. Waiting {wait}s...")
-            try:
-                st.toast(f"API Error ({eval_model_name}): {e}. Retrying in {wait}s...", icon="⏳")
-            except:
-                pass
-            if attempt < 4:
+            error_str = str(e).lower()
+            if "429" in error_str or "rate limit" in error_str or "timeout" in error_str:
+                wait = 60
+                print(f"[{eval_model_name}] Rate limit/Timeout hit. Waiting {wait}s to recover...")
+                try:
+                    st.toast(f"Rate Limit Hit ({eval_model_name}): Waiting {wait}s to recover...", icon="⏳")
+                except:
+                    pass
                 time.sleep(wait)
             else:
-                return f"API Error: {str(e)}"
+                wait = 5 * (attempt + 1)
+                print(f"[{eval_model_name}] Attempt {attempt+1}/5 failed: {e}. Waiting {wait}s...")
+                try:
+                    st.toast(f"API Error ({eval_model_name}): {e}. Retrying in {wait}s...", icon="⏳")
+                except:
+                    pass
+                if attempt < 4:
+                    time.sleep(wait)
+                else:
+                    return f"API Error: {str(e)}"
 
 def judge_evaluate_fn(messages):
     return call_llm_for_eval(messages, "openai/gpt-oss-20b", gpt_oss_key)

@@ -60,12 +60,18 @@ def run_batch_eval(num_cases=10):
                     content = f"*[Reasoning: {reasoning}]*\n\n{content}"
                 return content
             except Exception as e:
-                wait = 5 * (attempt + 1)
-                print(f"  [{model_name}] Attempt {attempt+1}/5 failed: {e}. Waiting {wait}s...")
-                if attempt < 4:
+                error_str = str(e).lower()
+                if "429" in error_str or "rate limit" in error_str or "timeout" in error_str:
+                    wait = 60
+                    print(f"  [{model_name}] Rate limit/Timeout hit. Waiting {wait}s to recover...")
                     time.sleep(wait)
                 else:
-                    return f"API Error: {str(e)}"
+                    wait = 5 * (attempt + 1)
+                    print(f"  [{model_name}] Attempt {attempt+1}/5 failed: {e}. Waiting {wait}s...")
+                    if attempt < 4:
+                        time.sleep(wait)
+                    else:
+                        return f"API Error: {str(e)}"
     
     results = []
     total_cases = min(num_cases, len(dataset))
