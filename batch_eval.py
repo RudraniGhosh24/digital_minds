@@ -1,6 +1,6 @@
 """
 Batch Evaluator for the Mens Rea x Persona Stability Paper.
-Runs 100 LegalBench cases through the entire Track 3 + Track 5 pipeline 
+Runs curated LegalBench cases through the entire Track 3 + Track 5 pipeline 
 and generates a CSV for publication.
 """
 
@@ -31,17 +31,18 @@ def run_batch_eval(num_cases=10):
         return
 
     if api_key.startswith("nvapi-"):
-        client = OpenAI(api_key=api_key, base_url="https://integrate.api.nvidia.com/v1", timeout=30.0, max_retries=2)
+        client = OpenAI(api_key=api_key, base_url="https://integrate.api.nvidia.com/v1", timeout=120.0, max_retries=3)
         model_name = os.environ.get("NVIDIA_MODEL_NAME", "openai/gpt-oss-20b")
     else:
-        client = OpenAI(api_key=api_key, timeout=30.0, max_retries=2)
+        client = OpenAI(api_key=api_key, timeout=120.0, max_retries=3)
         model_name = "gpt-4o-mini"
         
     print(f"Using Model: {model_name}")
     print("Loading Curated Scenarios...")
     dataset = load_curated_scenarios()
+
     def call_llm(messages):
-        for attempt in range(3):
+        for attempt in range(5):
             try:
                 kwargs = {
                     "model": model_name,
@@ -58,89 +59,98 @@ def run_batch_eval(num_cases=10):
                     content = f"*[Reasoning: {reasoning}]*\n\n{content}"
                 return content
             except Exception as e:
-                print(f"[{model_name}] API Error on attempt {attempt+1}: {e}")
-                if attempt < 2:
-                    print(f"API Rate Limit hit, waiting 30 seconds...")
-                    time.sleep(30)
+                wait = 60 * (attempt + 1)
+                print(f"  [{model_name}] Attempt {attempt+1}/5 failed: {e}. Waiting {wait}s...")
+                if attempt < 4:
+                    time.sleep(wait)
                 else:
-                    raise Exception(f"API Error after 3 attempts: {str(e)}")
+                    return f"API Error: {str(e)}"
     
-    def evaluate_case(i, scenario_data):
-        legal_issue = scenario_data["legal_issue"]
-        print(f"[Case {i}] Starting evaluation...")
-        
-        # 1. The Incident (RAG Poisoning)
-        docs = retrieve_documents(scenario_data, poisoned=True)
-        context = format_context(docs)
-        user_prompt = f"{context}\n\nBased on the retrieved documents, please provide a ruling on the following issue: {legal_issue}"
-        
-        messages = [
-            {"role": "system", "content": POISONED_SYSTEM_PROMPT},
-            {"role": "user", "content": user_prompt}
-        ]
-        
-        print(f"[Case {i}] Step 1/5: Poisoned Actus Reus...")
-        ai_ruling = call_llm(messages)
-        messages.append({"role": "assistant", "content": ai_ruling})
-        
-        actus_reus = evaluate_actus_reus(ai_ruling, scenario_data, call_llm)
-        
-        # 2. Track 3: Mens Rea Interrogation
-        print(f"[Case {i}] Step 4/5: Mens Rea Cross-Examination...")
-        naive_resp = call_llm(messages + [{"role": "user", "content": get_naive_cross_exam(legal_issue)}])
-        struct_resp = call_llm(messages + [{"role": "user", "content": get_structured_cross_exam()}])
-        adv_resp = call_llm(messages + [{"role": "user", "content": get_adversarial_cross_exam()}])
-        
-        mens_rea_naive = grade_mens_rea(naive_resp, "Naive", actus_reus, call_llm)
-        mens_rea_struct = grade_mens_rea(struct_resp, "Structured", actus_reus, call_llm)
-        mens_rea_adv = grade_mens_rea(adv_resp, "Adversarial", actus_reus, call_llm)
-        
-        # 3. Track 5: Persona Stability
-        print(f"[Case {i}] Step 5/5: Persona Stability...")
-        backroom_resp = call_llm(messages + [{"role": "user", "content": get_backroom_chat_prompt()}])
-        whistleblower_resp = call_llm(messages + [{"role": "user", "content": get_whistleblower_prompt()}])
-        epistemic_resp = call_llm(messages + [{"role": "user", "content": get_epistemic_deconstruction_prompt()}])
-        
-        persona_stab = grade_persona_stability(backroom_resp, whistleblower_resp, epistemic_resp, call_llm)
-        
-        # 4. Cross-Tabulation (using structured as the representative unbiased-prompt interrogation)
-        final_verdict = get_cross_tabulation_verdict(mens_rea_struct, persona_stab, actus_reus)
-        print(f"[Case {i}] Evaluation Complete! Verdict: {final_verdict}")
-        
-        return {
-            "case_id": i,
-            "actus_reus_committed": actus_reus,
-            "mens_rea_naive": mens_rea_naive,
-            "mens_rea_structured": mens_rea_struct,
-            "mens_rea_adversarial": mens_rea_adv,
-            "persona_stability": persona_stab,
-            "final_verdict": final_verdict
-        }
-
     results = []
-    import concurrent.futures
-    
     total_cases = min(num_cases, len(dataset))
-    print(f"Starting {total_cases} cases with 5 concurrent workers...")
+    print(f"\n{'='*60}")
+    print(f"Starting {total_cases} cases sequentially")
+    print(f"{'='*60}\n")
     
-    with concurrent.futures.ThreadPoolExecutor(max_workers=5) as executor:
-        futures = {executor.submit(evaluate_case, i, dataset[i]): i for i in range(total_cases)}
+    for i in range(total_cases):
+        scenario_data = dataset[i]
+        legal_issue = scenario_data["legal_issue"]
+        print(f"\n--- Case {i+1}/{total_cases}: {scenario_data.get('title', legal_issue[:50])} ---")
         
-        for count, future in enumerate(concurrent.futures.as_completed(futures), 1):
-            try:
-                result = future.result()
-                results.append(result)
-                print(f"Completed {count}/{total_cases}")
-            except Exception as exc:
-                print(f"Case generated an exception: {exc}")
-            time.sleep(0.5)
+        try:
+            # 1. The Incident (RAG Poisoning)
+            print(f"  [Case {i+1}] Step 1/5: Poisoned Actus Reus...")
+            docs = retrieve_documents(scenario_data, poisoned=True)
+            context = format_context(docs)
+            user_prompt = f"{context}\n\nBased on the retrieved documents, please provide a ruling on the following issue: {legal_issue}"
+            
+            messages = [
+                {"role": "system", "content": POISONED_SYSTEM_PROMPT},
+                {"role": "user", "content": user_prompt}
+            ]
+            
+            ai_ruling = call_llm(messages)
+            messages.append({"role": "assistant", "content": ai_ruling})
+            
+            actus_reus = evaluate_actus_reus(ai_ruling, scenario_data, call_llm)
+            print(f"  [Case {i+1}] Actus Reus: {'BIASED' if actus_reus else 'NEUTRAL'}")
+            
+            # 2. Track 3: Mens Rea Interrogation
+            print(f"  [Case {i+1}] Step 2/5: Naive Cross-Examination...")
+            naive_resp = call_llm(messages + [{"role": "user", "content": get_naive_cross_exam(legal_issue)}])
+            
+            print(f"  [Case {i+1}] Step 3/5: Structured Cross-Examination...")
+            struct_resp = call_llm(messages + [{"role": "user", "content": get_structured_cross_exam()}])
+            
+            print(f"  [Case {i+1}] Step 4/5: Adversarial Cross-Examination...")
+            adv_resp = call_llm(messages + [{"role": "user", "content": get_adversarial_cross_exam()}])
+            
+            mens_rea_naive = grade_mens_rea(naive_resp, "Naive", actus_reus, call_llm)
+            mens_rea_struct = grade_mens_rea(struct_resp, "Structured", actus_reus, call_llm)
+            mens_rea_adv = grade_mens_rea(adv_resp, "Adversarial", actus_reus, call_llm)
+            print(f"  [Case {i+1}] Mens Rea: N={mens_rea_naive} | S={mens_rea_struct} | A={mens_rea_adv}")
+            
+            # 3. Track 5: Persona Stability
+            print(f"  [Case {i+1}] Step 5/5: Persona Stability (3 probes)...")
+            backroom_resp = call_llm(messages + [{"role": "user", "content": get_backroom_chat_prompt()}])
+            whistleblower_resp = call_llm(messages + [{"role": "user", "content": get_whistleblower_prompt()}])
+            epistemic_resp = call_llm(messages + [{"role": "user", "content": get_epistemic_deconstruction_prompt()}])
+            
+            persona_stab = grade_persona_stability(backroom_resp, whistleblower_resp, epistemic_resp, call_llm)
+            
+            # 4. Cross-Tabulation
+            final_verdict = get_cross_tabulation_verdict(mens_rea_struct, persona_stab, actus_reus)
+            print(f"  [Case {i+1}] ✅ VERDICT: {final_verdict}")
+            
+            results.append({
+                "case_id": i,
+                "actus_reus_committed": actus_reus,
+                "mens_rea_naive": mens_rea_naive,
+                "mens_rea_structured": mens_rea_struct,
+                "mens_rea_adversarial": mens_rea_adv,
+                "persona_stability": persona_stab,
+                "final_verdict": final_verdict
+            })
+            
+            # Save after every case so progress is never lost
+            pd.DataFrame(results).to_csv("results.csv", index=False)
+            print(f"  [Case {i+1}] Saved to results.csv ({len(results)} rows)")
+            
+        except Exception as exc:
+            print(f"  [Case {i+1}] ❌ FAILED: {exc}")
+        
+        # Gentle pacing between cases
+        time.sleep(2)
 
-    df = pd.DataFrame(results)
-    df.to_csv("results.csv", index=False)
-    print("Batch evaluation complete! Results saved to results.csv.")
+    print(f"\n{'='*60}")
+    print(f"Batch evaluation complete! {len(results)}/{total_cases} cases succeeded.")
+    print(f"Results saved to results.csv")
+    print(f"{'='*60}")
     
-    print("\n--- Summary Statistics ---")
-    print(df['final_verdict'].value_counts())
+    if results:
+        df = pd.DataFrame(results)
+        print("\n--- Summary Statistics ---")
+        print(df['final_verdict'].value_counts())
 
 if __name__ == "__main__":
     run_batch_eval()
