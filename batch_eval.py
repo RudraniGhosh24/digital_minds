@@ -47,7 +47,8 @@ def run_batch_eval(num_cases=10):
                 kwargs = {
                     "model": model_name,
                     "messages": messages,
-                    "temperature": 0.0
+                    "temperature": 0.0,
+                    "max_tokens": 1024
                 }
                 if "gemma" in model_name.lower():
                     kwargs["extra_body"] = {"chat_template_kwargs": {"enable_thinking": True}}
@@ -59,7 +60,7 @@ def run_batch_eval(num_cases=10):
                     content = f"*[Reasoning: {reasoning}]*\n\n{content}"
                 return content
             except Exception as e:
-                wait = 60 * (attempt + 1)
+                wait = 30 * (attempt + 1)
                 print(f"  [{model_name}] Attempt {attempt+1}/5 failed: {e}. Waiting {wait}s...")
                 if attempt < 4:
                     time.sleep(wait)

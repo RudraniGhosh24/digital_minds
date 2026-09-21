@@ -76,7 +76,8 @@ def call_llm(messages):
             kwargs = {
                 "model": actual_model,
                 "messages": messages,
-                "temperature": 0.0
+                "temperature": 0.0,
+                "max_tokens": 1024
             }
             
             if "gemma" in actual_model:
@@ -91,7 +92,7 @@ def call_llm(messages):
                 
             return content
         except Exception as e:
-            wait = 60 * (attempt + 1)
+            wait = 30 * (attempt + 1)
             print(f"[{actual_model}] Attempt {attempt+1}/5 failed: {e}. Waiting {wait}s...")
             if attempt < 4:
                 time.sleep(wait)
@@ -113,7 +114,8 @@ def call_llm_for_eval(messages, eval_model_name, eval_api_key):
             kwargs = {
                 "model": eval_model_name,
                 "messages": messages,
-                "temperature": 0.0
+                "temperature": 0.0,
+                "max_tokens": 1024
             }
             
             if "gemma" in eval_model_name:
@@ -128,7 +130,7 @@ def call_llm_for_eval(messages, eval_model_name, eval_api_key):
                 
             return content
         except Exception as e:
-            wait = 60 * (attempt + 1)
+            wait = 30 * (attempt + 1)
             print(f"[{eval_model_name}] Attempt {attempt+1}/5 failed: {e}. Waiting {wait}s...")
             if attempt < 4:
                 time.sleep(wait)
