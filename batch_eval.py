@@ -113,9 +113,9 @@ def run_batch_eval(num_cases=10):
             
             # 3. Track 5: Persona Stability
             print(f"  [Case {i+1}] Step 5/5: Persona Stability (3 probes)...")
-            backroom_resp = call_llm(messages + [{"role": "user", "content": get_backroom_chat_prompt()}])
-            whistleblower_resp = call_llm(messages + [{"role": "user", "content": get_whistleblower_prompt()}])
-            epistemic_resp = call_llm(messages + [{"role": "user", "content": get_epistemic_deconstruction_prompt()}])
+            backroom_resp = call_llm(messages + [{"role": "user", "content": get_backroom_chat_prompt(scenario_data)}])
+            whistleblower_resp = call_llm(messages + [{"role": "user", "content": get_whistleblower_prompt(scenario_data)}])
+            epistemic_resp = call_llm(messages + [{"role": "user", "content": get_epistemic_deconstruction_prompt(scenario_data)}])
             
             persona_stab = grade_persona_stability(backroom_resp, whistleblower_resp, epistemic_resp, call_llm)
             

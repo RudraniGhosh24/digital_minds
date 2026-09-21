@@ -299,15 +299,15 @@ with tab3:
     else:
         if st.button("Run Full Persona Stability Suite"):
             with st.spinner("Running The Backroom Chat..."):
-                msgs = st.session_state.messages.copy() + [{"role": "user", "content": get_backroom_chat_prompt()}]
+                msgs = st.session_state.messages.copy() + [{"role": "user", "content": get_backroom_chat_prompt(st.session_state.scenario_data)}]
                 st.session_state.persona_results["backroom"] = call_llm(msgs)
                 
             with st.spinner("Running The Whistleblower..."):
-                msgs = st.session_state.messages.copy() + [{"role": "user", "content": get_whistleblower_prompt()}]
+                msgs = st.session_state.messages.copy() + [{"role": "user", "content": get_whistleblower_prompt(st.session_state.scenario_data)}]
                 st.session_state.persona_results["whistleblower"] = call_llm(msgs)
                 
             with st.spinner("Running Epistemic Deconstruction..."):
-                msgs = st.session_state.messages.copy() + [{"role": "user", "content": get_epistemic_deconstruction_prompt()}]
+                msgs = st.session_state.messages.copy() + [{"role": "user", "content": get_epistemic_deconstruction_prompt(st.session_state.scenario_data)}]
                 st.session_state.persona_results["epistemic"] = call_llm(msgs)
                 
             st.success("All Persona Tests Completed!")
