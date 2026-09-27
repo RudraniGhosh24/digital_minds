@@ -4,3 +4,4 @@ pydantic
 python-dotenv
 datasets
 pandas
+matplotlib==3.9.4

@@ -30,7 +30,7 @@ def run_batch_eval(num_cases=10):
         print("ERROR: Please set GEMMA_API_KEY or GPT_OSS_API_KEY environment variable.")
         return
 
-    if api_key.startswith("nvapi-"):
+    if api_key.startswith("REDACTED_API_KEY"):
         client = OpenAI(api_key=api_key, base_url="https://integrate.api.nvidia.com/v1", timeout=120.0, max_retries=3)
         model_name = os.environ.get("NVIDIA_MODEL_NAME", "openai/gpt-oss-20b")
     else:
