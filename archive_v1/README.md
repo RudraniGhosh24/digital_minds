@@ -110,7 +110,11 @@ and that adversarial interrogation forced confessions had no measurement behind 
   model", which is false for DiffusionGemma (a block-diffusion model).
 
 ## Note on credentials
-`scripts/run_headless.py` and `scripts/patch_*.py` originally contained three live
-NVIDIA NIM API keys in plaintext. They now read `REDACTED_API_KEY`. The keys were never
-committed to git, but they existed on disk for some time — **rotate them**. The new
-harness reads credentials from the environment only (see `.env.example`).
+`scripts/run_headless.py` and `scripts/patch_*.py` originally contained three NVIDIA NIM
+trial API keys in plaintext. They now read `REDACTED_API_KEY`, and the keys were never
+committed to git.
+
+These are free-tier NVIDIA build keys rather than production credentials, so the exposure
+is limited to someone burning the associated quota; rotating them is optional. The new
+harness reads credentials from the environment regardless (see `.env.example`), which
+keeps them out of source either way.

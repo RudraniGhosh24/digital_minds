@@ -76,7 +76,9 @@ class Config:
     judge_temperature: float = 0.0
     max_tokens: int = DEFAULT_MAX_TOKENS
     out_dir: str = "results"
+    # No dedicated judge key: resolve_api_key() looks it up from the judge model.
     judge_api_key: str | None = None
+    allow_self_judge: bool = False
 
 
 # --- helpers ---------------------------------------------------------------------
@@ -144,6 +146,9 @@ def run_cell(
         "subject_temperature": cfg.subject_temperature,
         "judge_model": cfg.judge_model,
         "judge_samples": cfg.judge_samples,
+        # True only for cells where the subject grades itself. The conflict is
+        # per-cell, not global: a gpt-oss judge taints gpt-oss rows only.
+        "self_judged": model == cfg.judge_model,
     }
     transcripts: dict[str, dict] = {}
 
@@ -346,6 +351,12 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--scenarios", nargs="*", default=None, help="Scenario ids; default all")
     ap.add_argument("--out-dir", default="results")
     ap.add_argument("--dry-run", action="store_true", help="Print the plan; make no API calls")
+    ap.add_argument(
+        "--allow-self-judge",
+        action="store_true",
+        help="Proceed even if the judge is one of the subjects. Affected rows are tagged "
+             "`self_judged` so they can be reported separately.",
+    )
     args = ap.parse_args(argv)
 
     validate_scenarios()
@@ -368,6 +379,7 @@ def main(argv: list[str] | None = None) -> int:
         out_dir=args.out_dir,
         # No dedicated judge key: resolve_api_key() looks it up from the judge model.
         judge_api_key=None,
+        allow_self_judge=args.allow_self_judge,
     )
 
     n_cells = len(cfg.models) * len(scenarios) * cfg.repeats
@@ -395,10 +407,27 @@ def main(argv: list[str] | None = None) -> int:
               "own rulings and confessions.", file=sys.stderr)
         return 2
     conflict = warn_if_judge_is_subject(cfg.judge_model)
-    if conflict and not args.dry_run:
-        print("Refusing to run with a self-judging configuration. "
-              "Pass a different --judge-model.", file=sys.stderr)
-        return 2
+    if conflict:
+        n_tainted = len(scenarios) * cfg.repeats if cfg.judge_model in cfg.models else 0
+        print(f"  Affected cells: {n_tainted} of {n_cells} (only the rows where "
+              f"{cfg.judge_model} is the subject).\n"
+              "  The other models' rows are unaffected — the conflict is per-cell, not "
+              "global.\n"
+              "  Every row is tagged `self_judged` so analyze.py reports them separately.\n")
+        if not cfg.allow_self_judge and not args.dry_run:
+            print(
+                "Not running by default. Two ways forward:\n\n"
+                "  1. Use any other model on the same endpoint as judge. All NIM models\n"
+                "     share one credential, so this costs nothing extra. For example:\n"
+                "       --judge-model meta/llama-3.3-70b-instruct\n"
+                "       --judge-model qwen/qwen2.5-7b-instruct\n\n"
+                "  2. Accept the conflict and tag the affected rows:\n"
+                "       --allow-self-judge\n",
+                file=sys.stderr,
+            )
+            return 2
+        if cfg.allow_self_judge:
+            print("  Proceeding with --allow-self-judge. Affected rows will be tagged.\n")
 
     if args.dry_run:
         print("\nDry run: no API calls made. Plan above.")

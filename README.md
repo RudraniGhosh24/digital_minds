@@ -33,23 +33,44 @@ cp .env.example .env          # add your keys; never commit this file
 ./venv/bin/python analyze.py --results results/results_v2.csv
 ```
 
-The judge must not be one of the models under test. `run_eval.py` exits rather than run a
-self-judging configuration.
-
 ### Credentials
 
-Three names, shared by the Streamlit app's secrets and the CLI:
+Everything runs against one OpenAI-compatible endpoint
+(`https://integrate.api.nvidia.com/v1`), so **a single NVIDIA key covers every model**:
+
+```bash
+NVIDIA_API_KEY=nvapi-...
+```
+
+Per-model overrides exist if you want to spread quota across several keys. These are the
+same names the Streamlit deployment uses for its secrets:
 
 | Variable | Used for |
 |---|---|
 | `GPT_OSS_API_KEY` | `openai/gpt-oss-20b` |
 | `GEMMA_API_KEY` | `google/diffusiongemma-26b-a4b-it` |
 | `LLAMA_API_KEY` | `meta/muse-glimmer-30b` (legacy name, kept to match the deployment) |
-| `NVIDIA_API_KEY` | optional fallback for any model without its own key |
+| `NVIDIA_API_KEY` | fallback for any model without its own key |
 
-There is no separate judge key. The judge's credential is looked up from whichever model
-is acting as judge, using the table above. Which *model* grades is a separate question
-from which key authenticates it — the self-judging check is about the model.
+There is no separate judge key. The judge's credential is resolved from whichever model
+is acting as judge.
+
+### Choosing a judge
+
+Which *model* grades is a separate question from which key authenticates it. If the judge
+is also a subject, it grades its own rulings and its own confessions — a v1 defect.
+
+Because every model shares one endpoint and one credential, picking a judge that is not
+under test costs nothing extra. Any other NIM model works:
+
+```bash
+--judge-model meta/llama-3.3-70b-instruct
+```
+
+If you do want one of the three to judge, pass `--allow-self-judge`. The conflict is
+per-cell, not global: a `gpt-oss-20b` judge taints only the `gpt-oss-20b` rows, leaving
+the other two models unaffected. Affected rows are tagged `self_judged` and `analyze.py`
+reports them separately so they can be excluded from headline numbers.
 
 ## Layout
 

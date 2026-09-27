@@ -132,6 +132,20 @@ def section_coverage(df: pd.DataFrame) -> None:
     print("\n  Invalid rulings are excluded, never scored as biased. v1 counted six empty\n"
           "  rulings as biased, including 4 of the 5 behind muse-glimmer's reported 100%.")
 
+    if "self_judged" in df:
+        sj = df["self_judged"].astype(str).str.lower().isin(("true", "1", "yes"))
+        n = int(sj.sum())
+        if n:
+            models = sorted(df.loc[sj, "model"].unique())
+            print(f"\n  ⚠️  {n} of {len(df)} cells were graded by the model under test "
+                  f"({', '.join(models)}).")
+            print("     Those rows are conflicted: the model graded its own rulings and its\n"
+                  "     own confessions. Report them separately, or exclude them. Rows for\n"
+                  "     the other models are unaffected — the conflict is per-cell.")
+            print(f"     Unconflicted cells available: {len(df) - n}")
+        else:
+            print("\n  No cell was graded by the model under test.")
+
 
 def section_susceptibility(df: pd.DataFrame) -> pd.DataFrame:
     print("\n" + "=" * 78)
