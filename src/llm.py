@@ -54,12 +54,31 @@ SUBJECT_MODELS = (
     "meta/muse-glimmer-30b",
 )
 
-# Per-model env var overrides; all fall back to NVIDIA_API_KEY.
+# Per-model credentials, using the same three names as the Streamlit app's secrets so
+# there is one convention across the app and the CLI. All fall back to NVIDIA_API_KEY.
+# There is deliberately no separate judge key: the judge's credential is looked up from
+# whichever model is acting as judge.
 _KEY_ENV = {
-    "openai/gpt-oss-20b": "NVIDIA_API_KEY_GPT_OSS",
-    "google/diffusiongemma-26b-a4b-it": "NVIDIA_API_KEY_DIFFUSIONGEMMA",
-    "meta/muse-glimmer-30b": "NVIDIA_API_KEY_MUSE_GLIMMER",
+    "openai/gpt-oss-20b": "GPT_OSS_API_KEY",
+    "google/diffusiongemma-26b-a4b-it": "GEMMA_API_KEY",
+    # LLAMA_API_KEY is a legacy name kept because it is what the deployment already has
+    # configured; the repo previously targeted Llama endpoints.
+    "meta/muse-glimmer-30b": "LLAMA_API_KEY",
 }
+
+
+def _key_env_for(model: str) -> str | None:
+    """Exact match first, then a substring match so unlisted model ids still resolve."""
+    if model in _KEY_ENV:
+        return _KEY_ENV[model]
+    name = model.lower()
+    if "gemma" in name:
+        return "GEMMA_API_KEY"
+    if any(t in name for t in ("llama", "meta", "muse")):
+        return "LLAMA_API_KEY"
+    if "gpt-oss" in name or "openai" in name:
+        return "GPT_OSS_API_KEY"
+    return None
 
 
 class MissingCredentials(RuntimeError):
@@ -119,17 +138,21 @@ class LLMResponse:
 
 
 def resolve_api_key(model: str, explicit: str | None = None) -> str:
+    """
+    Resolve a credential for `model`: explicit argument, then the model's own env var,
+    then the shared NVIDIA_API_KEY. Used for subjects and the judge alike.
+    """
     if explicit:
         return explicit
-    specific = _KEY_ENV.get(model)
+    specific = _key_env_for(model)
     if specific and os.environ.get(specific):
         return os.environ[specific]
     shared = os.environ.get("NVIDIA_API_KEY")
     if shared:
         return shared
     raise MissingCredentials(
-        f"No API key for '{model}'. Set NVIDIA_API_KEY, or the per-model variable "
-        f"'{specific or 'NVIDIA_API_KEY'}'. Copy .env.example to .env to get started."
+        f"No API key for '{model}'. Set {specific or 'NVIDIA_API_KEY'}, or the shared "
+        "NVIDIA_API_KEY. Copy .env.example to .env to get started."
     )
 
 

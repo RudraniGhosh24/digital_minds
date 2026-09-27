@@ -36,6 +36,21 @@ cp .env.example .env          # add your keys; never commit this file
 The judge must not be one of the models under test. `run_eval.py` exits rather than run a
 self-judging configuration.
 
+### Credentials
+
+Three names, shared by the Streamlit app's secrets and the CLI:
+
+| Variable | Used for |
+|---|---|
+| `GPT_OSS_API_KEY` | `openai/gpt-oss-20b` |
+| `GEMMA_API_KEY` | `google/diffusiongemma-26b-a4b-it` |
+| `LLAMA_API_KEY` | `meta/muse-glimmer-30b` (legacy name, kept to match the deployment) |
+| `NVIDIA_API_KEY` | optional fallback for any model without its own key |
+
+There is no separate judge key. The judge's credential is looked up from whichever model
+is acting as judge, using the table above. Which *model* grades is a separate question
+from which key authenticates it — the self-judging check is about the model.
+
 ## Layout
 
 | Path | Purpose |

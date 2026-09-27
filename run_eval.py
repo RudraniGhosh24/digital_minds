@@ -366,7 +366,8 @@ def main(argv: list[str] | None = None) -> int:
         judge_temperature=args.judge_temperature,
         max_tokens=args.max_tokens,
         out_dir=args.out_dir,
-        judge_api_key=os.environ.get("JUDGE_API_KEY") or None,
+        # No dedicated judge key: resolve_api_key() looks it up from the judge model.
+        judge_api_key=None,
     )
 
     n_cells = len(cfg.models) * len(scenarios) * cfg.repeats

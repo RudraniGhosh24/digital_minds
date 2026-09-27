@@ -1,7 +1,9 @@
+# Runtime for the Streamlit app (app.py)
 streamlit
 openai
-pydantic
-python-dotenv
-datasets
 pandas
-matplotlib==3.9.4
+python-dotenv
+
+# Analysis only (analyze.py). Bounded rather than pinned so the Streamlit Cloud
+# image can resolve a wheel for whatever Python version it runs.
+matplotlib>=3.7,<4
