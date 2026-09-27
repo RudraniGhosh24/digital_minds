@@ -32,7 +32,7 @@ import os
 import random
 import time
 from dataclasses import dataclass, field
-from typing import Any, Callable
+from typing import Any, Callable, Sequence
 
 try:
     from dotenv import load_dotenv
@@ -137,23 +137,63 @@ class LLMResponse:
         }
 
 
-def resolve_api_key(model: str, explicit: str | None = None) -> str:
+def resolve_api_key(
+    model: str, explicit: str | None = None, allow_borrow: bool = False
+) -> tuple[str, str]:
     """
-    Resolve a credential for `model`: explicit argument, then the model's own env var,
-    then the shared NVIDIA_API_KEY. Used for subjects and the judge alike.
+    Resolve a credential for `model`. Returns (key, source_description).
+
+    Order: explicit argument, the model's own env var, then the shared NVIDIA_API_KEY.
+
+    `allow_borrow` additionally permits falling back to any other configured key. That
+    is only appropriate for a judge model: every model here is served from the same
+    endpoint, so any valid key can authenticate a judge that has no key of its own.
+    Subjects never borrow, so a misconfigured subject fails loudly instead of silently
+    running under the wrong account.
     """
     if explicit:
-        return explicit
+        return explicit, "explicit argument"
+
     specific = _key_env_for(model)
     if specific and os.environ.get(specific):
-        return os.environ[specific]
+        return os.environ[specific], specific
+
     shared = os.environ.get("NVIDIA_API_KEY")
     if shared:
-        return shared
+        return shared, "NVIDIA_API_KEY"
+
+    if allow_borrow:
+        for name in ("GPT_OSS_API_KEY", "GEMMA_API_KEY", "LLAMA_API_KEY"):
+            if os.environ.get(name):
+                return os.environ[name], f"{name} (borrowed; same endpoint)"
+
     raise MissingCredentials(
-        f"No API key for '{model}'. Set {specific or 'NVIDIA_API_KEY'}, or the shared "
-        "NVIDIA_API_KEY. Copy .env.example to .env to get started."
+        f"No API key for '{model}'. Set {specific or 'NVIDIA_API_KEY'}"
+        + ("" if specific else " (this model matches no per-model key name)")
+        + ". Copy .env.example to .env to get started."
     )
+
+
+def describe_credentials(models: Sequence[str], judge_model: str | None = None) -> str:
+    """
+    Preflight report: which env var each model will authenticate with, and whether it is
+    set. Never prints a key — only a masked fingerprint so two keys can be told apart.
+    """
+    rows = []
+
+    def _row(model: str, is_judge: bool) -> str:
+        try:
+            key, source = resolve_api_key(model, allow_borrow=is_judge)
+            mask = f"{key[:9]}...{key[-4:]}" if len(key) > 16 else "set"
+            return f"  {'judge ' if is_judge else 'subject'} {model:36} {source:34} {mask}"
+        except MissingCredentials:
+            return f"  {'judge ' if is_judge else 'subject'} {model:36} {'MISSING':34} --"
+
+    for m in models:
+        rows.append(_row(m, False))
+    if judge_model:
+        rows.append(_row(judge_model, True))
+    return "\n".join(rows)
 
 
 class LLMClient:
@@ -177,7 +217,7 @@ class LLMClient:
             from openai import OpenAI
 
             self._clients[model] = OpenAI(
-                api_key=resolve_api_key(model, api_key),
+                api_key=resolve_api_key(model, api_key, allow_borrow=True)[0],
                 base_url=self.base_url,
                 timeout=self.timeout,
                 max_retries=0,  # we handle retries so backoff is observable
@@ -281,16 +321,21 @@ class MockLLMClient(LLMClient):
 
 def warn_if_judge_is_subject(judge_model: str) -> bool:
     """
-    v1 used gpt-oss-20b as the judge while also evaluating it as a subject, on the same
-    key, so one model graded its own rulings and confessions. Returns True if that
-    conflict is present.
+    The paper uses gpt-oss-20b as the external judge while also evaluating it as a
+    subject, so for one of the three models the judge grades its own rulings and its own
+    confessions. Returns True when that overlap is present.
+
+    This is reported, not blocked: the model set is fixed by the paper. The overlap is
+    per-cell, so it affects only the rows where the judge is also the subject, and those
+    rows are tagged `self_judged` for separate reporting.
     """
     if judge_model in SUBJECT_MODELS:
         print(
             "\n" + "!" * 78 + "\n"
-            f"!! CONFLICT OF INTEREST: judge '{judge_model}' is also a subject model.\n"
-            "!! It will grade its own rulings and its own confessions. This was a\n"
-            "!! defect in v1. Set JUDGE_MODEL to a model that is not under test.\n"
+            f"!! NOTE: judge '{judge_model}' is also one of the subject models.\n"
+            "!! For its own rows it grades its own rulings and its own confessions.\n"
+            "!! Those rows are tagged `self_judged` and reported separately by\n"
+            "!! analyze.py. Rows for the other models are unaffected.\n"
             + "!" * 78 + "\n"
         )
         return True

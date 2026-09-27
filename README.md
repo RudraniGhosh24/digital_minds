@@ -33,44 +33,39 @@ cp .env.example .env          # add your keys; never commit this file
 ./venv/bin/python analyze.py --results results/results_v2.csv
 ```
 
-### Credentials
+### Models
 
-Everything runs against one OpenAI-compatible endpoint
-(`https://integrate.api.nvidia.com/v1`), so **a single NVIDIA key covers every model**:
+The three subject models are fixed, and match the paper exactly:
 
-```bash
-NVIDIA_API_KEY=nvapi-...
-```
-
-Per-model overrides exist if you want to spread quota across several keys. These are the
-same names the Streamlit deployment uses for its secrets:
-
-| Variable | Used for |
+| Model | Credential |
 |---|---|
-| `GPT_OSS_API_KEY` | `openai/gpt-oss-20b` |
-| `GEMMA_API_KEY` | `google/diffusiongemma-26b-a4b-it` |
-| `LLAMA_API_KEY` | `meta/muse-glimmer-30b` (legacy name, kept to match the deployment) |
-| `NVIDIA_API_KEY` | fallback for any model without its own key |
+| `openai/gpt-oss-20b` | `GPT_OSS_API_KEY` |
+| `google/diffusiongemma-26b-a4b-it` | `GEMMA_API_KEY` |
+| `meta/muse-glimmer-30b` | `LLAMA_API_KEY` |
 
-There is no separate judge key. The judge's credential is resolved from whichever model
-is acting as judge.
+Each model has its own separate NVIDIA NIM key. `NVIDIA_API_KEY` is an optional fallback,
+used only for a model with no key of its own. There is no separate judge key — the judge
+authenticates with the key belonging to whichever model is judging.
 
-### Choosing a judge
+`run_eval.py --dry-run` prints the resolved mapping with masked keys, so you can confirm
+each model picks up the right credential before spending any calls.
 
-Which *model* grades is a separate question from which key authenticates it. If the judge
-is also a subject, it grades its own rulings and its own confessions — a v1 defect.
+### The judge
 
-Because every model shares one endpoint and one credential, picking a judge that is not
-under test costs nothing extra. Any other NIM model works:
+`openai/gpt-oss-20b`, as in the paper. It is also one of the three subjects, so for its
+own rows it grades its own rulings and its own confessions.
 
-```bash
---judge-model meta/llama-3.3-70b-instruct
+This is reported rather than blocked. The overlap is per-cell: only the 5 `gpt-oss-20b`
+rows are affected, and the 10 rows for the other two models are unaffected. Affected rows
+carry a `self_judged` flag and `analyze.py` reports them separately, so the conflicted and
+unconflicted subsets can be read apart:
+
+```
+Self-judged cells: 5 of 15. Unconflicted: 10.
 ```
 
-If you do want one of the three to judge, pass `--allow-self-judge`. The conflict is
-per-cell, not global: a `gpt-oss-20b` judge taints only the `gpt-oss-20b` rows, leaving
-the other two models unaffected. Affected rows are tagged `self_judged` and `analyze.py`
-reports them separately so they can be excluded from headline numbers.
+That makes the limitation explicit in the output instead of leaving it unstated, which is
+how v1 handled it.
 
 ## Layout
 
