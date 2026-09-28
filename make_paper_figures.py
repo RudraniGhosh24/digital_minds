@@ -75,7 +75,7 @@ def load(path: Path) -> pd.DataFrame:
     return df
 
 
-def fig1_susceptibility(df, out: Path):
+def fig2_susceptibility(df, out: Path):
     """Grouped bars, three conditions per model, with Wilson intervals."""
     models = [MODEL_SHORT[m] for m in MODEL_SHORT if MODEL_SHORT[m] in set(df.m)]
     fig, ax = plt.subplots(figsize=(9, 5.2))
@@ -111,13 +111,13 @@ def fig1_susceptibility(df, out: Path):
               bbox_to_anchor=(0.5, -0.12))
     ax.grid(axis="y", alpha=0.25)
     ax.set_axisbelow(True)
-    p = out / "Figure_1_Bias_By_Condition.png"
+    p = out / "Figure_2_Bias_By_Condition.png"
     fig.savefig(p, bbox_inches="tight")
     plt.close(fig)
     return p
 
 
-def fig2_heatmap(df, out: Path):
+def fig3_heatmap(df, out: Path):
     """Every run as a cell, so the reader can see which scenarios flipped."""
     models = [m for m in MODEL_SHORT.values() if m in set(df.m)]
     fig, axes = plt.subplots(1, 3, figsize=(11, 3.6), sharey=True)
@@ -151,13 +151,13 @@ def fig2_heatmap(df, out: Path):
 
     fig.suptitle("Which runs produced a biased ruling.  B = biased toward the poisoned party",
                  fontsize=11.5, y=1.04)
-    p = out / "Figure_2_Run_Level_Heatmap.png"
+    p = out / "Figure_3_Run_Level_Heatmap.png"
     fig.savefig(p, bbox_inches="tight")
     plt.close(fig)
     return p
 
 
-def fig3_stances(df, out: Path):
+def fig4_stances(df, out: Path):
     """
     The introspection result in one chart. Six probes, stacked by what the model
     asserted. Carries both the interrogation ladder and the persona shifts.
@@ -197,13 +197,13 @@ def fig3_stances(df, out: Path):
               bbox_to_anchor=(0.5, -0.16))
     ax.grid(axis="x", alpha=0.25)
     ax.set_axisbelow(True)
-    p = out / "Figure_3_Stance_Across_Probes.png"
+    p = out / "Figure_4_Stance_Across_Probes.png"
     fig.savefig(p, bbox_inches="tight")
     plt.close(fig)
     return p
 
 
-def fig4_letters(df, out: Path):
+def fig5_letters(df, out: Path):
     """Forced choice answers. Shows B dominating, which is the concealment mechanism."""
     opts = ["A", "B", "C", "D"]
     text = {
@@ -242,13 +242,13 @@ def fig4_letters(df, out: Path):
               bbox_to_anchor=(0.5, -0.18))
     ax.grid(axis="x", alpha=0.25)
     ax.set_axisbelow(True)
-    p = out / "Figure_4_Forced_Choice_Answers.png"
+    p = out / "Figure_5_Forced_Choice_Answers.png"
     fig.savefig(p, bbox_inches="tight")
     plt.close(fig)
     return p
 
 
-def fig5_classes(df, out: Path):
+def fig6_classes(df, out: Path):
     """Mens Rea classification, derived from the per probe labels."""
     models = [m for m in MODEL_SHORT.values() if m in set(df.m)]
     classes = ["Purposeful", "Confabulation", "Willful Blindness"]
@@ -278,7 +278,7 @@ def fig5_classes(df, out: Path):
               bbox_to_anchor=(0.5, -0.1))
     ax.grid(axis="y", alpha=0.25)
     ax.set_axisbelow(True)
-    p = out / "Figure_5_Mens_Rea_Classes.png"
+    p = out / "Figure_6_Mens_Rea_Classes.png"
     fig.savefig(p, bbox_inches="tight")
     plt.close(fig)
     return p
@@ -292,8 +292,8 @@ def main():
     df = load(Path(a.results))
     out = Path(a.out)
     out.mkdir(parents=True, exist_ok=True)
-    made = [fig0_design(out), fig1_susceptibility(df, out), fig2_heatmap(df, out),
-            fig3_stances(df, out), fig4_letters(df, out), fig5_classes(df, out)]
+    made = [fig1_design(out), fig2_susceptibility(df, out), fig3_heatmap(df, out),
+            fig4_stances(df, out), fig5_letters(df, out), fig6_classes(df, out)]
     for p in made:
         print(f"  {p}  ({p.stat().st_size // 1024} KB)")
 
@@ -316,7 +316,7 @@ def _arrow(ax, x1, y1, x2, y2, ec="#666", lw=1.3, style="-|>"):
                                 shrinkA=2, shrinkB=2), zorder=1)
 
 
-def fig0_design(out: Path):
+def fig1_design(out: Path):
     """Schematic of the experimental design. Not data driven, so it lives on its own."""
     fig, ax = plt.subplots(figsize=(12.2, 8.6))
     ax.set_xlim(0, 100)
@@ -406,7 +406,7 @@ def fig0_design(out: Path):
                      "The other five go to the judge.",
             fontsize=8.2, style="italic", color="#666")
 
-    p = out / "Figure_0_Design_Schematic.png"
+    p = out / "Figure_1_Design_Schematic.png"
     fig.savefig(p, bbox_inches="tight", facecolor="white")
     plt.close(fig)
     return p
